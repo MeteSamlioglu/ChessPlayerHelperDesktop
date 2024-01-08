@@ -13,7 +13,7 @@ DATASET:
   - white_pawn
   - white_queen
   - white_rook
-  PATH: data://transfer_learning/pieces
+  PATH: D:\\chesscog\\data\\my_transfer_learning\\pieces
   TRANSFORMS:
     CENTER_CROP: null
     COLOR_JITTER:
@@ -25,9 +25,23 @@ DATASET:
     RESIZE:
     - 299
     - 299
+    SCALE:
+      HORIZONTAL:
+      - 0.9
+      - 1.2
+      VERTICAL:
+      - 0.8
+      - 1.2
     SHEAR:
-    - 0.0
+    - -0.1
     - 0.25
+    TRANSLATE:
+      HORIZONTAL:
+      - -.03
+      - 0.1
+      VERTICAL:
+      - -.03
+      - 0.1
   WORKERS: 2
 TRAINING:
   MODEL:

@@ -18,41 +18,48 @@ from recap import URI, CfgNode as CN
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from timeit import default_timer as timer
+from pathlib import Path
 
-
-
-def analyzeBoard()-> typing.Tuple[chess.Board, np.ndarray, dict]:
+class BoardAnalyzer:
     
-    #corner_detection_configuration_file_path = URI("Configuration://corner_detection.yaml")
-
-    cfg = CN.load_yaml_with_base("C:\\Users\\Monster\\Desktop\\Graduation Project1\\chesscog\\configuration\\corner_detection.yaml")
-
-    with torch.no_grad():
+    def __init__(self, src_path: Path = URI("C:\\Users\\Monster\\Desktop\\Graduation Project1\\ChessPlayerHelperDesktop\\models\\occupancy_classifier")):
+        self.cfg = CN.load_yaml_with_base("C:\\Users\\Monster\\Desktop\\Graduation Project1\\ChessPlayerHelperDesktop\\configuration\\corner_detection.yaml")
         
-        img = cv2.imread("D:\\chesscog\\example\\myboard4.jpg")
+        self.occupancy_model, self.occupancy_cfg = ClassifyOccupancy.set_occupancy_classifier(
+                                    Path("C:\\Users\\Monster\\Desktop\\Graduation Project1\\ChessPlayerHelperDesktop\\models\\occupancy_classifier\\"))
+        
+        self.occupancy_transforms_ = ClassifyOccupancy.build_transforms(self.occupancy_cfg)
     
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    def analyzeBoard(self) -> typing.Tuple[chess.Board, np.ndarray, dict]:
+        with torch.no_grad():
             
-        img, img_scale = DetectBoard.resize_image(cfg, img)
-        
-        corners = DetectBoard.find_corners(cfg,img)
-        
-        classify_occupancy = ClassifyOccupancy.OccupancyClassifier()
-        
-        occupancy_classification = classify_occupancy.occupancy_classifier(img, chess.WHITE ,corners)
-        
-        print(occupancy_classification)
-        # occupancy_classification = np.array(occupancy_classification)
-        # for i in range(occupancy_classification.shape[0]):
-        #     if i % 8 != 0:
-        #         print(f'{occupancy_classification[i]}', end = ' ')
-        #     else:
-        #         print("\n")
-    
-def predict(setup : callable = lambda : None):
-    setup()
-    
-    
-    
+            img = cv2.imread("D:\\chesscog\\example\\myboard4.jpg")
+            
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            
+            img, img_scale = DetectBoard.resize_image(self.cfg, img)
+            
+            corners = DetectBoard.find_corners(self.cfg, img)
+            
+            print(corners.shape)
+            
+            for point in corners:
+                cv2.circle(img, tuple(point.astype(int)), 5, (0, 0, 255), -1)  # Convert point to integers
+            
+            cv2.imshow("img",img)
+            cv2.waitKey(0)
+            
+            occupancy_classification = ClassifyOccupancy.occupancy_classifier(self.occupancy_model, self.occupancy_transforms_,self.occupancy_cfg,
+                                                                              img, chess.WHITE, corners)
+            print(occupancy_classification)
+            
+            # occupancy_classification = np.array(occupancy_classification)
+            # for i in range(occupancy_classification.shape[0]):
+            #     if i % 8 != 0:
+            #         print(f'{occupancy_classification[i]}', end=' ')
+            #     else:
+            #         print("\n")
+
 if __name__ == "__main__":
-    analyzeBoard()
+    boardAnalyzer = BoardAnalyzer() 
+    boardAnalyzer.analyzeBoard()

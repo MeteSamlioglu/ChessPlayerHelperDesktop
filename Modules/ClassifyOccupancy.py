@@ -23,104 +23,110 @@ IMG_SIZE = BOARD_SIZE + 2 * SQUARE_SIZE
 _MEAN = np.array([0.485, 0.456, 0.406])
 _STD = np.array([0.229, 0.224, 0.225])
 
-class OccupancyClassifier:
-    
-    _squares = list(chess.SQUARES)
-    
-    def __init__(self, src_path : Path = URI("C:\\Users\\Monster\\Desktop\\Graduation Project1\\python-scripts\\chesscog\\runs\\transfer_learning\\occupancy_classifier")):
-                
-        self.occupancy_model, self.cfg = self.set_occupancy_classifier(src_path)   
-        self.tranforms_ = build_transforms(self.cfg)
-    
-    """It arranges the board coordinates to the order of [TL, TR, BR, BL].
+_squares = list(chess.SQUARES)
+
+
+
+def build_transforms(cfg: CN) -> typing.Callable:
+
+    transforms = cfg.DATASET.TRANSFORMS
+
+    t = []
+    if transforms.CENTER_CROP:
+        t.append(T.CenterCrop(transforms.CENTER_CROP))
+
+    if transforms.RESIZE:
+        t.append(T.Resize(tuple(reversed(transforms.RESIZE))))
+    t.extend([T.ToTensor(),
+              T.Normalize(mean=_MEAN, std=_STD)])
+    return T.Compose(t)
         
-    Param:
-        corners: the edge coordinates of the chess board
+def set_occupancy_classifier(path: Path):
+    
+    file_path = next(iter(path.glob("*.pt")))
+    
+    yaml_file = next(iter(path.glob("*.yaml")))
+    
+    configuration_file = CN.load_yaml_with_base(yaml_file)
+    
+    model = torch.load(file_path, map_location = DEVICE)
+
+    model = device(model)
+    
+    model.eval()
+    
+    return model, configuration_file
+
+
+    
+"""It arranges the board coordinates to the order of [TL, TR, BR, BL].
+    
+Param:
+    corners: the edge coordinates of the chess board
+Returns:
+    Sorted coordinates according to TL, TR, BR , BL
+""" 
+def sortCornerPoints(corners : np.ndarray) -> np.ndarray:
+    
+    corners =  corners[corners[:, 1].argsort()] # Ordering y coordinates
+    corners[:2] = corners[:2][corners[:2, 0].argsort()] #Only sort the top x-coordinates
+    corners[2:] = corners[2:][corners[2:, 0].argsort()[::-1]] #Sort bottom x-coordinates
+    return corners
+
+
+
+def WarpBoardImage(img: np.ndarray, corners: np.ndarray) -> np.ndarray:
+    """Warp the image of the chessboard onto a regular grid.
+
+    Args:
+        img (np.ndarray): the image of the chessboard
+        corners (np.ndarray): pixel locations of the four corner points
+
     Returns:
-        Sorted coordinates according to TL, TR, BR , BL
-    """ 
-    @classmethod
-    def sortCornerPoints(cls,corners : np.ndarray) -> np.ndarray:
-        
-        corners =  corners[corners[:, 1].argsort()] # Ordering y coordinates
-        corners[:2] = corners[:2][corners[:2, 0].argsort()] #Only sort the top x-coordinates
-        corners[2:] = corners[2:][corners[2:, 0].argsort()[::-1]] #Sort bottom x-coordinates
-        return corners
-
-        
-    @classmethod
-    def set_occupancy_classifier(self, path: Path):
-        
-        file_path = next(iter(path.glob("*.pt")))
-        
-        yaml_file = next(iter(path.glob("*.yaml")))
-        
-        configuration_file = CN.load_yaml_with_base(yaml_file)
-        
-        model = torch.load(file_path, map_location = DEVICE)
-
-        model = device(model)
-        
-        model.eval()
-        
-        return model, configuration_file
+        np.ndarray: the warped image
+    """
+    src_points = sortCornerPoints(corners)
     
+    dst_points = np.array([[SQUARE_SIZE, SQUARE_SIZE],  # top left
+                        [BOARD_SIZE + SQUARE_SIZE, SQUARE_SIZE],  # top right
+                        [BOARD_SIZE + SQUARE_SIZE, BOARD_SIZE + \
+                            SQUARE_SIZE],  # bottom right
+                        [SQUARE_SIZE, BOARD_SIZE + SQUARE_SIZE]  # bottom left
+                        ], dtype=np.float32)
+    transformation_matrix, mask = cv2.findHomography(src_points, dst_points)
+    return cv2.warpPerspective(img, transformation_matrix, (IMG_SIZE, IMG_SIZE))
+
+
+def occupancy_classifier(model, transforms_, config_file : CN, img: np.ndarray, turn: chess.Color, corners: np.ndarray):
     
-    @classmethod
-    def WarpBoardImage(cls,img: np.ndarray, corners: np.ndarray) -> np.ndarray:
-        """Warp the image of the chessboard onto a regular grid.
+    path = URI("C:\\Users\\Monster\\Desktop\\Graduation Project1\\chesscog\\models\\occupancy_classifier")
+    # yaml_file = next(iter(path.glob("*.yaml")))
+    # configuration_file = CN.load_yaml_with_base(yaml_file)
 
-        Args:
-            img (np.ndarray): the image of the chessboard
-            corners (np.ndarray): pixel locations of the four corner points
+    warped_image = WarpBoardImage(img, corners) # Warp the image of the chessboard for cropping squares
 
-        Returns:
-            np.ndarray: the warped image
-        """
-        src_points = cls.sortCornerPoints(corners)
-        
-        dst_points = np.array([[SQUARE_SIZE, SQUARE_SIZE],  # top left
-                            [BOARD_SIZE + SQUARE_SIZE, SQUARE_SIZE],  # top right
-                            [BOARD_SIZE + SQUARE_SIZE, BOARD_SIZE + \
-                                SQUARE_SIZE],  # bottom right
-                            [SQUARE_SIZE, BOARD_SIZE + SQUARE_SIZE]  # bottom left
-                            ], dtype=np.float32)
-        transformation_matrix, mask = cv2.findHomography(src_points, dst_points)
-        return cv2.warpPerspective(img, transformation_matrix, (IMG_SIZE, IMG_SIZE))
-
-    @classmethod
-    def occupancy_classifier(cls, img: np.ndarray, turn: chess.Color, corners: np.ndarray):
-        
-        path = URI("C:\\Users\\Monster\\Desktop\\Graduation Project1\\python-scripts\\chesscog\\runs\\transfer_learning\\occupancy_classifier")
-        # yaml_file = next(iter(path.glob("*.yaml")))
-        # configuration_file = CN.load_yaml_with_base(yaml_file)
-        model, config_file = cls.set_occupancy_classifier(path)
-        tranforms_ = build_transforms(config_file)
-
-        warped_image = cls.WarpBoardImage(img, corners) # Warp the image of the chessboard for cropping squares
-  
-        
-        square_imgs = map(functools.partial(
-            CropChessBoardSquares, warped_image, turn=turn), cls._squares)      
-        
-        square_imgs = map(Image.fromarray, square_imgs)
     
-        square_imgs = map(tranforms_, square_imgs)
-        
-        square_imgs = list(square_imgs)
-        
-        square_imgs = torch.stack(square_imgs)
+    square_imgs = map(functools.partial(
+        CropChessBoardSquares, warped_image, turn=turn), _squares)      
+    
+    square_imgs = map(Image.fromarray, square_imgs)
 
-        square_imgs = device(square_imgs)
-        
-        occupancy = model(square_imgs)
-        
-        occupancy = occupancy.argmax(
-            axis=-1) == config_file.DATASET.CLASSES.index("occupied")  
+    square_imgs = map(transforms_, square_imgs)
+    
+    square_imgs = list(square_imgs)
+    
+    square_imgs = torch.stack(square_imgs)
 
-        occupancy = occupancy.cpu().numpy()
-        
-        return occupancy
+    square_imgs = device(square_imgs)
+    
+    occupancy = model(square_imgs)
+    
+    occupancy = occupancy.argmax(
+        axis=-1) == config_file.DATASET.CLASSES.index("occupied")  
+
+    occupancy = occupancy.cpu().numpy()
+    
+    return occupancy
       
 def CropChessBoardSquares(img: np.ndarray, square: chess.Square, turn: chess.Color) -> np.ndarray:
     
@@ -136,17 +142,3 @@ def CropChessBoardSquares(img: np.ndarray, square: chess.Square, turn: chess.Col
                         int(SQUARE_SIZE * (col + .5)): int(SQUARE_SIZE * (col + 2.5))]
     
     return cropped_square
-
-def build_transforms(cfg: CN) -> typing.Callable:
-
-    transforms = cfg.DATASET.TRANSFORMS
-
-    t = []
-    if transforms.CENTER_CROP:
-        t.append(T.CenterCrop(transforms.CENTER_CROP))
-
-    if transforms.RESIZE:
-        t.append(T.Resize(tuple(reversed(transforms.RESIZE))))
-    t.extend([T.ToTensor(),
-              T.Normalize(mean=_MEAN, std=_STD)])
-    return T.Compose(t)
