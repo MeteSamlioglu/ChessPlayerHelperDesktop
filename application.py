@@ -25,7 +25,7 @@ def analyzeBoard()-> typing.Tuple[chess.Board, np.ndarray, dict]:
     
     #corner_detection_configuration_file_path = URI("Configuration://corner_detection.yaml")
 
-    cfg = CN.load_yaml_with_base("C:\\Users\\Monster\\Desktop\\Graduation Project1\\Project\\chesscog\\configuration\\corner_detection.yaml")
+    cfg = CN.load_yaml_with_base("C:\\Users\\Monster\\Desktop\\Graduation Project1\\chesscog\\configuration\\corner_detection.yaml")
 
     with torch.no_grad():
         
