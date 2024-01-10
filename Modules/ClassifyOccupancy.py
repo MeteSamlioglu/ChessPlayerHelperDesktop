@@ -97,15 +97,10 @@ def WarpBoardImage(img: np.ndarray, corners: np.ndarray) -> np.ndarray:
     return cv2.warpPerspective(img, transformation_matrix, (IMG_SIZE, IMG_SIZE))
 
 
-def occupancy_classifier(model, transforms_, config_file : CN, img: np.ndarray, turn: chess.Color, corners: np.ndarray):
-    
-    path = URI("C:\\Users\\Monster\\Desktop\\Graduation Project1\\chesscog\\models\\occupancy_classifier")
-    # yaml_file = next(iter(path.glob("*.yaml")))
-    # configuration_file = CN.load_yaml_with_base(yaml_file)
+def occupancy_classifier(model, transforms_, config_file : CN, img: np.ndarray, turn: chess.Color, corners: np.ndarray)-> np.ndarray:
 
     warped_image = WarpBoardImage(img, corners) # Warp the image of the chessboard for cropping squares
 
-    
     square_imgs = map(functools.partial(
         CropChessBoardSquares, warped_image, turn=turn), _squares)      
     

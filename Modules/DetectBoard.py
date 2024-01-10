@@ -203,7 +203,7 @@ def find_corners(cfg: CN, img: np.ndarray) -> np.ndarray:
     img_corners = _warp_points(inverse_transformation_matrix, corners)
     img_corners = img_corners / img_scale
     # print(img_corners)
-    return sort_corner_points(img_corners)
+    return inverse_transformation_matrix,sort_corner_points(img_corners)
 
 
 def resize_image(cfg: CN, img: np.ndarray) -> typing.Tuple[np.ndarray, float]:
