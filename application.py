@@ -31,7 +31,7 @@ boardDetection = False
 
 state_tracker = ChessStateTracker.StateTracker()
 
-PREDICTION_THRESHOLD = 3
+PREDICTION_THRESHOLD = 4
 
 class BoardAnalyzer:
     
@@ -62,13 +62,13 @@ class BoardAnalyzer:
             
             self.corners = DetectBoard.find_corners(self.cfg, img)
             
-            # for point in corners:
+            # for point in self.corners:
             #     cv2.circle(img, tuple(point.astype(int)), 5, (0, 0, 255), -1)  # Convert point to integers
             
-            # corner1 = tuple(map(int, corners[0]))
-            # corner2 = tuple(map(int, corners[1]))
-            # corner3 = tuple(map(int, corners[2]))
-            # corner4 = tuple(map(int, corners[3]))            
+            # corner1 = tuple(map(int, self.corners[0]))
+            # corner2 = tuple(map(int, self.corners[1]))
+            # corner3 = tuple(map(int, self.corners[2]))
+            # corner4 = tuple(map(int, self.corners[3]))            
             # # cv2.line(img, corner1, corner2, (0, 255, 0), 1)
             # # cv2.line(img, corner2, corner3, (0, 255, 0), 1)
             # cv2.line(img, corner2, corner4, (0, 255, 0), 1)
@@ -83,12 +83,12 @@ class BoardAnalyzer:
             # division_points_ = [(corner4[0] + i * (corner3[0] - corner4[0]) / num_divisions,
             #                     corner4[1] + i * (corner3[1] - corner4[1]) / num_divisions)
             #                 for i in range(1, num_divisions)]
-            # division_vertical = [(corner1[0] + i * (corner4[0] - corner1[0]) / 16,
-            #                         corner1[1] + i * (corner4[1] - corner1[1]) / 16)
-            #                     for i in range(0, 16)]
-            # division_vertical_ = [(corner2[0] + i * (corner3[0] - corner2[0]) / 16,
-            #                        corner2[1] + i * (corner3[1] - corner2[1]) / 16)
-            #                 for i in range(0, 16)]
+            # division_vertical = [(corner1[0] + i * (corner4[0] - corner1[0]) / 8,
+            #                         corner1[1] + i * (corner4[1] - corner1[1]) / 8)
+            #                     for i in range(0, 8)]
+            # division_vertical_ = [(corner2[0] + i * (corner3[0] - corner2[0]) / 8,
+            #                        corner2[1] + i * (corner3[1] - corner2[1]) / 8)
+            #                 for i in range(0, 8)]
             # # Draw points on the divided line
             # for point in division_points:
             #     cv2.circle(img, (int(point[0]), int(point[1])), 5, (255, 0, 0), -1)
@@ -161,8 +161,8 @@ class BoardAnalyzer:
        
         if prediction_result:
             current_state_ = state_tracker.get_current_state()
-            print(current_state_)
-            print("---------------------------")
+            # print(current_state_)
+            # print("---------------------------")
         
         
         boardDetection = True    
@@ -254,6 +254,9 @@ if __name__ == "__main__":
     boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\03.jpg")
     boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\04.jpg")
     boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\05.jpg")
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\06.jpg")
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\07.jpg")
+
 
 
 

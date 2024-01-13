@@ -37,65 +37,179 @@ class StateTracker:
         # for square, piece in differences:
         #     print(f"At square {chess.square_name(square)}, board1 has {piece} and board2 has {previous_state.piece_at(square)}.")
         # Find differences in white pieces
+        
         print(f'State Number {self.state_counter}')
         if self.WHITE_TURN == True:
+                    
+            white_differences_set = self.find_difference(previous_state, CurrentState, chess.BLACK)
             
-            white_differences = self.find_difference(previous_state, CurrentState, chess.BLACK)
+            white_diff_count = len(white_differences_set)
             
-            white_diff_count = len(white_differences)
+            print(white_diff_count)
             
-            print("White's Turn")
-            print(f'Number diff moves {white_diff_count}')
-            print("Differences in White Pieces:")
-            for square, current_piece, previous_piece in white_differences:
-                print(f"At square {chess.square_name(square)}, current board has {current_piece} and previous board has {previous_piece}.")
+            white_possible_moves = self.find_possible_moves(white_differences_set, chess.WHITE)
             
-            self.WHITE_TURN = False
-            self.BLACK_TURN = True
-            
-            self.States.append(CurrentState)
-            self.state_counter+=1
-            
-            print(CurrentState)
-            print("---------------------------")
             if white_diff_count > StateTracker.THRESHOLD_VALUE: 
                 return False
+            
+          
+            possible_white_moves_count = len(white_possible_moves)
+            
+            print("White possible moves")
+            print(white_possible_moves)
+            
+            if(possible_white_moves_count == 0):
+                return False
+            
+            current_state_ = previous_state.copy()
+            
+            current_state_.turn = chess.WHITE
+
+            current_state_.push(white_possible_moves[0])
+            
+            print(current_state_)
+            print("---------------------------")  
+            
+            self.state_counter+=1
+            
+            self.WHITE_TURN = False
+            
+            self.BLACK_TURN = True       
+            
+            
+            self.States.append(current_state_)
             
             return True
         
         if self.BLACK_TURN == True:
-            black_differences = self.find_difference(previous_state, CurrentState, chess.WHITE)
-            black_diff_count = len(black_differences)
-            print("Black's Turn")
-            print(f'Number diff moves {black_diff_count}')
-            print("Differences in Black Pieces:")
-            for square, current_piece, previous_piece in black_differences:
-                print(f"At square {chess.square_name(square)}, current board has {current_piece} and previous board has {previous_piece}.")
+        
             
-            self.WHITE_TURN = True
-            self.BLACK_TURN = False   
+            black_difference_set = self.find_difference(previous_state, CurrentState, chess.WHITE)
             
-            self.States.append(CurrentState)
-            self.state_counter+=1
+            black_diff_count = len(black_difference_set)
             
-            print(CurrentState)
-            print("---------------------------")   
+            print(black_diff_count)
+
+            black_possible_moves = self.find_possible_moves(black_difference_set, chess.BLACK)
             
             if black_diff_count > StateTracker.THRESHOLD_VALUE: 
                 return False
             
+            possible_black_moves_count = len(black_possible_moves)
+
+            print("Black possible moves")
+            print(black_possible_moves)
+            
+            if possible_black_moves_count == 0:
+                return False
+            
+            current_state_ = previous_state.copy()
+            
+            current_state_.turn = chess.BLACK
+            current_state_.push(black_possible_moves[0])
+            
+            print(current_state_)
+            
+            print("---------------------------")   
+            
+            self.WHITE_TURN = True
+            
+            self.BLACK_TURN = False   
+            
+            self.state_counter+=1
+            
+            self.States.append(current_state_)
+            
             return True
 
-        """ 
-            Method takes previous and current state of the board and finds the difference except the given parameter color
-            Param:
-                PreviousState : The previous state of the game
-                CurrentState  : The current state of the game
-                Color : Piece type that is going to be ignored when searching for the difference 
+    def find_possible_moves(self, difference_set, turn : chess.Color):
+        
+        diff_count = len(difference_set)
+            
+        diff_squares = []
+            
+        legal_moves = []    
+        
+        previous_board = self.States[self.state_counter - 1] #Get the previous state
+        
+        for square, current_piece, previous_piece in difference_set:            
+            diff_squares.append(chess.square_name(square))
+        
+        if turn == chess.BLACK:
+                    
 
-            Returns:
-                Returns the difference between the current and the previous board for given parameter color
-        """
+            for i in range(len(diff_squares)):
+                
+                square= chess.parse_square(diff_squares[i])
+                
+                piece = previous_board.piece_at(square)
+                
+                if piece is not None and piece.color == chess.BLACK:
+         
+                    for j in range(len(diff_squares)):
+                        
+                        if(j != i):    
+                                                        
+                            move_notation = f'{diff_squares[i]}{diff_squares[j]}'
+               
+                            from_square = chess.parse_square(move_notation[:2].lower())
+                            
+                            to_square = chess.parse_square(move_notation[2:].lower())
+                            
+                            move = chess.Move(from_square, to_square)                            
+                            previous_board.turn = chess.BLACK
+
+                            is_legal_move = previous_board.is_legal(move)
+                            
+                            if is_legal_move:
+                                legal_moves.append(move)
+            
+
+        elif turn == chess.WHITE:
+            
+            previous_board.turn = chess.WHITE
+
+            for i in range(len(diff_squares)):
+                
+                square= chess.parse_square(diff_squares[i])
+                
+                piece = previous_board.piece_at(square)
+                
+                if piece is not None and piece.color == chess.WHITE:
+                    
+                    for j in range(len(diff_squares)):
+                        
+                        if(j != i):    
+                                                        
+                            move_notation = f'{diff_squares[i]}{diff_squares[j]}'
+                            
+                            from_square = chess.parse_square(move_notation[:2].lower())
+                            
+                            to_square = chess.parse_square(move_notation[2:].lower())
+                            
+                            move = chess.Move(from_square, to_square)                            
+                            
+                            is_legal_move = previous_board.is_legal(move)
+                            
+                            if is_legal_move:
+                                legal_moves.append(move)
+            
+            if(self.state_counter > 1):
+                previous_board.turn = chess.BLACK          
+        
+        
+        return legal_moves
+        
+    """ 
+        Method takes previous and current state of the board and finds the difference except the given parameter color
+        Param:
+            PreviousState : The previous state of the game
+            CurrentState  : The current state of the game
+            Color : Piece type that is going to be ignored when searching for the difference 
+
+        Returns:
+            Returns the difference between the current and the previous board for given parameter color
+    """
     
     def find_difference(self, PreviousState, CurrentState, color : chess.Color) -> list[tuple]:
         
@@ -168,3 +282,23 @@ class StateTracker:
             # piece_moves = board.legal_moves.count()
             
             # print(piece_moves)
+            
+            
+            # print("Black's Turn")
+            
+            # print(f'Number diff moves {diff_count}')
+            
+            # print("Differences in Black Pieces:")
+            
+            # for square, current_piece, previous_piece in difference_set:
+            #     print(f"At square {chess.square_name(square)}, current board has {current_piece} and previous board has {previous_piece}.")
+            #     diff_squares.append(chess.square_name(square))
+            
+            # print("White's Turn")
+            
+            # print(f'Number diff moves {diff_count}')
+            
+            # print("Differences in White Pieces:")
+            # for square, current_piece, previous_piece in difference_set:
+            #     print(f"At square {chess.square_name(square)}, current board has {previous_piece} and previous board has {current_piece}.")
+            
