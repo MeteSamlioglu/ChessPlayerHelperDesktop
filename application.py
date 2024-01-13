@@ -1,6 +1,7 @@
 from Modules import DetectBoard
 from Modules import ClassifyOccupancy
 from Modules import ClassifyPieces
+from Modules import ChessStateTracker
 import numpy as np
 import chess
 from chess import Status
@@ -25,7 +26,13 @@ import asyncio
 import concurrent.futures
 
 _squares = list(chess.SQUARES)
+
 boardDetection = False
+
+state_tracker = ChessStateTracker.StateTracker()
+
+PREDICTION_THRESHOLD = 3
+
 class BoardAnalyzer:
     
     def __init__(self, src_path: Path = URI("C:\\Users\\Monster\\Desktop\\Graduation Project1\\ChessPlayerHelperDesktop\\models\\occupancy_classifier")):
@@ -44,66 +51,132 @@ class BoardAnalyzer:
         
     
     
-    def analyzeBoard(self, frame) -> typing.Tuple[chess.Board, np.ndarray, dict]:
-        with torch.no_grad():
-            global boardDetection 
+    def detect_chessboard(self, frame) -> typing.Tuple[chess.Board, np.ndarray, dict]:
+      
             
+            #img = cv2.imread(path)
             
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
             img, img_scale = DetectBoard.resize_image(self.cfg, img)
             
-            inverse_matrix, corners = DetectBoard.find_corners(self.cfg, img)
+            self.corners = DetectBoard.find_corners(self.cfg, img)
             
-            img_shape = img.shape
-            height, width = img_shape[:2]
-            #print(f'"Image size: Width={width}, Height={height}')
             # for point in corners:
             #     cv2.circle(img, tuple(point.astype(int)), 5, (0, 0, 255), -1)  # Convert point to integers
-          
-           
             
-            # point_ = tuple((corners[0][0].astype(int) + 225, corners[0][1].astype(int) - 12))
+            # corner1 = tuple(map(int, corners[0]))
+            # corner2 = tuple(map(int, corners[1]))
+            # corner3 = tuple(map(int, corners[2]))
+            # corner4 = tuple(map(int, corners[3]))            
+            # # cv2.line(img, corner1, corner2, (0, 255, 0), 1)
+            # # cv2.line(img, corner2, corner3, (0, 255, 0), 1)
+            # cv2.line(img, corner2, corner4, (0, 255, 0), 1)
+            # cv2.line(img, corner1, corner3, (0, 255, 0), 1)
+    
+            # # Divide the line between corner2 and corner3 into 8 equal divisions
+            # num_divisions = 8
+            # division_points = [(corner1[0] + i * (corner2[0] - corner1[0]) / 8,
+            #                     corner1[1] + i * (corner2[1] - corner1[1]) / 8)
+            #                 for i in range(1, 8)]
             
-            #cv2.circle(img, point_, 5, (0, 0, 255), -1)  # Convert point to integers
+            # division_points_ = [(corner4[0] + i * (corner3[0] - corner4[0]) / num_divisions,
+            #                     corner4[1] + i * (corner3[1] - corner4[1]) / num_divisions)
+            #                 for i in range(1, num_divisions)]
+            # division_vertical = [(corner1[0] + i * (corner4[0] - corner1[0]) / 16,
+            #                         corner1[1] + i * (corner4[1] - corner1[1]) / 16)
+            #                     for i in range(0, 16)]
+            # division_vertical_ = [(corner2[0] + i * (corner3[0] - corner2[0]) / 16,
+            #                        corner2[1] + i * (corner3[1] - corner2[1]) / 16)
+            #                 for i in range(0, 16)]
+            # # Draw points on the divided line
+            # for point in division_points:
+            #     cv2.circle(img, (int(point[0]), int(point[1])), 5, (255, 0, 0), -1)
+            
+            # for point in division_points_:
+            #     cv2.circle(img, (int(point[0]), int(point[1])), 5, (255, 0, 0), -1)
+            
+            # for point1, point2 in zip(division_points, division_points_):
+            #     cv2.line(img, (int(point1[0]), int(point1[1])), (int(point2[0]), int(point2[1])), (0, 255, 0), 1)
+
+            # for point in division_vertical:
+            #     cv2.circle(img, (int(point[0]), int(point[1])), 5, (255, 0, 0), -1)
+            
+            # for point in division_vertical_:
+            #     cv2.circle(img, (int(point[0]), int(point[1])), 5, (255, 0, 0), -1)
 
             # cv2.imshow("img",img)
             # cv2.waitKey(0)
             
+            return img, self.corners
+    
+    def predict_state(self, frame):
+        
+        with torch.no_grad():
+                        
             occupancy_classification = ClassifyOccupancy.occupancy_classifier(self.occupancy_model, self.occupancy_transforms_,self.occupancy_cfg,
-                                                                              img, chess.WHITE, corners)
+                                                                              frame, chess.WHITE, self.corners)
             #print(occupancy_classification)
             
-            pieces =  ClassifyPieces._classify_pieces(self.pieces_model,self.pieces_transforms_, self.piece_classes, img, chess.WHITE, corners, occupancy_classification)
+            pieces =  ClassifyPieces._classify_pieces(self.pieces_model,self.pieces_transforms_, self.piece_classes, frame, chess.WHITE, self.corners, occupancy_classification)
 
-            #print(pieces)
+            
             board = chess.Board()
+            
             board.clear_board()
-       
+        
             for square, piece in zip(_squares, pieces):
                 if piece:
+                    #print(f'Square  {square} , Piece {piece} Type {type(piece)}')
                     board.set_piece_at(square, piece)
             
-            #print(board)
             
-           
-            # if board.status() != Status.VALID:
-            #     print("Board is not valid")
+            state_tracker_result = state_tracker.add_state(board)
+                    
+            return state_tracker_result
+
+    def analyze_board(self, path):
+        
+        global boardDetection
+
+        frame = cv2.imread(path)
+        
+        img, self.corners = self.detect_chessboard(frame)
+        
+        counter = 0
+        
+        prediction_result = self.predict_state(img)
+        
+        while prediction_result is not True:
             
-            # cropped_square_ = DetectBoard._warp_points(inverse_matrix, cropped_square)
-            # cv2.imshow("cropped_square_", cropped_square_)
-            # cv2.waitKey(0)
-            boardDetection = True
-            return corners
+            if counter == PREDICTION_THRESHOLD:
+                print("========= State is not recognized ===============")
+                prediction_result = False
+                break
+                
+            prediction_result = self.predict_state(img)
+            
+            counter+=1
+        
+       
+        if prediction_result:
+            current_state_ = state_tracker.get_current_state()
+            print(current_state_)
+            print("---------------------------")
+        
+        
+        boardDetection = True    
+
+        return prediction_result
 
 def display_frames():
     global boardDetection
-    ip_camera_address = '192.168.1.62'
+    ip_camera_address = '192.168.1.85'
     ip_camera_port = '8080'
-    ip_camera_url = f"http://192.168.1.62:8080/video"
+    ip_camera_url = f"http://192.168.1.85:8080/video"
     frame_counter = 0
     cap = cv2.VideoCapture(ip_camera_url)
-
+    #cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
     if not cap.isOpened():
         print(f"Error: Could not open IP camera stream at {ip_camera_url}")
         return
@@ -163,7 +236,7 @@ def display_frames():
             arrow_tip_length = 0.1
 
             # Draw the arrowed line
-            cv2.arrowedLine(frame, start_point, end_point, color, thickness, tipLength=arrow_tip_length)
+            #cv2.arrowedLine(frame, start_point, end_point, color, thickness, tipLength=arrow_tip_length)
 
         cv2.imshow("Frames", frame)
 
@@ -173,6 +246,19 @@ def display_frames():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    #boardAnalyzer = BoardAnalyzer() 
+    boardAnalyzer = BoardAnalyzer() 
     #boardAnalyzer.analyzeBoard()
-    display_frames()
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\00.jpg")
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\01.jpg")
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\02.jpg")
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\03.jpg")
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\04.jpg")
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\05.jpg")
+
+
+
+
+    #state_tracker.display_states()
+
+   
+    #display_frames()

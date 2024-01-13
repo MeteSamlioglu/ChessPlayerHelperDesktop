@@ -135,5 +135,6 @@ def CropChessBoardSquares(img: np.ndarray, square: chess.Square, turn: chess.Col
     
     cropped_square = img[int(SQUARE_SIZE * (row + .5)): int(SQUARE_SIZE * (row + 2.5)),
                         int(SQUARE_SIZE * (col + .5)): int(SQUARE_SIZE * (col + 2.5))]
-    
+
+
     return cropped_square

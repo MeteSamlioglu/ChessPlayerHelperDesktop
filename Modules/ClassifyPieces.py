@@ -123,6 +123,7 @@ def crop_square(img: np.ndarray, square: chess.Square, turn: chess.Color) -> np.
         cropped_piece = cv2.flip(cropped_piece, 1)
     result = np.zeros((OUT_HEIGHT, OUT_WIDTH, 3), dtype=cropped_piece.dtype)
     result[OUT_HEIGHT - height:, :width] = cropped_piece
+    
     return result
 
 def WarpBoardImage(img: np.ndarray, corners: np.ndarray) -> np.ndarray:
