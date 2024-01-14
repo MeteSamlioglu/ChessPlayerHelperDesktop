@@ -61,13 +61,13 @@ class StateTracker:
             if(possible_white_moves_count == 0):
                 return False
             
-            current_state_ = previous_state.copy()
+            # current_state_ = previous_state.copy()
             
-            current_state_.turn = chess.WHITE
+            # current_state_.turn = chess.WHITE
 
-            current_state_.push(white_possible_moves[0])
+            # current_state_.push(white_possible_moves[0])
             
-            print(current_state_)
+            print(CurrentState)
             print("---------------------------")  
             
             self.state_counter+=1
@@ -77,7 +77,7 @@ class StateTracker:
             self.BLACK_TURN = True       
             
             
-            self.States.append(current_state_)
+            self.States.append(CurrentState)
             
             return True
         
@@ -103,12 +103,12 @@ class StateTracker:
             if possible_black_moves_count == 0:
                 return False
             
-            current_state_ = previous_state.copy()
+            # current_state_ = previous_state.copy()
             
-            current_state_.turn = chess.BLACK
-            current_state_.push(black_possible_moves[0])
+            # current_state_.turn = chess.BLACK
+            # current_state_.push(black_possible_moves[0])
             
-            print(current_state_)
+            print(CurrentState)
             
             print("---------------------------")   
             
@@ -118,7 +118,7 @@ class StateTracker:
             
             self.state_counter+=1
             
-            self.States.append(current_state_)
+            self.States.append(CurrentState)
             
             return True
 

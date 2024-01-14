@@ -62,52 +62,6 @@ class BoardAnalyzer:
             
             self.corners = DetectBoard.find_corners(self.cfg, img)
             
-            # for point in self.corners:
-            #     cv2.circle(img, tuple(point.astype(int)), 5, (0, 0, 255), -1)  # Convert point to integers
-            
-            # corner1 = tuple(map(int, self.corners[0]))
-            # corner2 = tuple(map(int, self.corners[1]))
-            # corner3 = tuple(map(int, self.corners[2]))
-            # corner4 = tuple(map(int, self.corners[3]))            
-            # # cv2.line(img, corner1, corner2, (0, 255, 0), 1)
-            # # cv2.line(img, corner2, corner3, (0, 255, 0), 1)
-            # cv2.line(img, corner2, corner4, (0, 255, 0), 1)
-            # cv2.line(img, corner1, corner3, (0, 255, 0), 1)
-    
-            # # Divide the line between corner2 and corner3 into 8 equal divisions
-            # num_divisions = 8
-            # division_points = [(corner1[0] + i * (corner2[0] - corner1[0]) / 8,
-            #                     corner1[1] + i * (corner2[1] - corner1[1]) / 8)
-            #                 for i in range(1, 8)]
-            
-            # division_points_ = [(corner4[0] + i * (corner3[0] - corner4[0]) / num_divisions,
-            #                     corner4[1] + i * (corner3[1] - corner4[1]) / num_divisions)
-            #                 for i in range(1, num_divisions)]
-            # division_vertical = [(corner1[0] + i * (corner4[0] - corner1[0]) / 8,
-            #                         corner1[1] + i * (corner4[1] - corner1[1]) / 8)
-            #                     for i in range(0, 8)]
-            # division_vertical_ = [(corner2[0] + i * (corner3[0] - corner2[0]) / 8,
-            #                        corner2[1] + i * (corner3[1] - corner2[1]) / 8)
-            #                 for i in range(0, 8)]
-            # # Draw points on the divided line
-            # for point in division_points:
-            #     cv2.circle(img, (int(point[0]), int(point[1])), 5, (255, 0, 0), -1)
-            
-            # for point in division_points_:
-            #     cv2.circle(img, (int(point[0]), int(point[1])), 5, (255, 0, 0), -1)
-            
-            # for point1, point2 in zip(division_points, division_points_):
-            #     cv2.line(img, (int(point1[0]), int(point1[1])), (int(point2[0]), int(point2[1])), (0, 255, 0), 1)
-
-            # for point in division_vertical:
-            #     cv2.circle(img, (int(point[0]), int(point[1])), 5, (255, 0, 0), -1)
-            
-            # for point in division_vertical_:
-            #     cv2.circle(img, (int(point[0]), int(point[1])), 5, (255, 0, 0), -1)
-
-            # cv2.imshow("img",img)
-            # cv2.waitKey(0)
-            
             return img, self.corners
     
     def predict_state(self, frame):
@@ -134,7 +88,81 @@ class BoardAnalyzer:
             state_tracker_result = state_tracker.add_state(board)
                     
             return state_tracker_result
+    
+    def find_square_coordinates(self, corners) -> np.ndarray:
+        
+        corner1 = tuple(map(int, corners[0]))
+        corner2 = tuple(map(int, corners[1]))
+        corner3 = tuple(map(int, corners[2]))
+        corner4 = tuple(map(int, corners[3]))            
+        
+        # Divide the line between corner2 and corner3 into 8 equal divisions
+    
+        num_divisions = 16
+        
+        division_points = [(corner1[0] + i * (corner2[0] - corner1[0]) / num_divisions,
+                            corner1[1] + i * (corner2[1] - corner1[1]) / num_divisions)
+                        for i in range(1, num_divisions, 2)]
+        
+        division_points_ = [(corner4[0] + i * (corner3[0] - corner4[0]) / num_divisions,
+                            corner4[1] + i * (corner3[1] - corner4[1]) / num_divisions)
+                        for i in range(1, num_divisions, 2)]
+        
+        # Divide the distance between corresponding points into 8 equal parts            
+        point_to_take = 0
 
+        square_coordinates = np.zeros((8, 8, 2))
+        row = 7
+        col = 0
+
+        for point1, point2 in zip(division_points, division_points_):
+            
+            point_to_take = 0
+            
+            row = 7
+            for alpha in np.linspace(0, 1, num_divisions + 2)[1:-1]:
+                
+                                    
+                new_point = (
+                    int((1 - alpha) * point1[0] + alpha * point2[0]),
+                    int((1 - alpha) * point1[1] + alpha * point2[1])
+                )
+                                                        
+                point_to_take+=1
+                                    
+                if point_to_take in [1, 2, 4, 6, 8, 10, 13, 16]:
+                                        
+                    square_coordinates[row][col] = new_point
+                    row-=1                      
+            col+=1
+        
+        return square_coordinates
+
+    
+    def get_square_coordinate(self, square_str, square_coordinates):
+        
+        square= chess.parse_square(square_str)
+
+        column = chess.square_file(square)
+        
+        row = chess.square_rank(square)
+        
+        print(f'row {row} column {column}')
+        
+        return square_coordinates[row][column]
+        
+    def show_move_on_board(self,frame, from_square, to_square, square_coordinates):
+        
+        from_square  = self.get_square_coordinate(from_square, square_coordinates)
+        
+        to_square = self.get_square_coordinate(to_square, square_coordinates)
+        
+        from_square = tuple(map(int, from_square))
+        
+        to_square = tuple(map(int, to_square))
+        
+        cv2.arrowedLine(frame, from_square, to_square, (0, 128, 0), 10, cv2.LINE_AA, tipLength=0.2)
+        
     def analyze_board(self, path):
         
         global boardDetection
@@ -143,31 +171,38 @@ class BoardAnalyzer:
         
         img, self.corners = self.detect_chessboard(frame)
         
-        counter = 0
+        square_coordinates = self.find_square_coordinates(self.corners) 
         
-        prediction_result = self.predict_state(img)
+        self.show_move_on_board(img, "d7", "d5", square_coordinates)
         
-        while prediction_result is not True:
-            
-            if counter == PREDICTION_THRESHOLD:
-                print("========= State is not recognized ===============")
-                prediction_result = False
-                break
-                
-            prediction_result = self.predict_state(img)
-            
-            counter+=1
-        
-       
-        if prediction_result:
-            current_state_ = state_tracker.get_current_state()
-            # print(current_state_)
-            # print("---------------------------")
-        
-        
-        boardDetection = True    
+        cv2.imshow("Frame", img)
 
-        return prediction_result
+        cv2.waitKey(0)
+        
+        # counter = 0
+        
+        # prediction_result = self.predict_state(img)
+        
+        # while prediction_result is not True:
+            
+        #     if counter == PREDICTION_THRESHOLD:
+        #         print("========= State is not recognized ===============")
+        #         prediction_result = False
+        #         break
+                
+        #     prediction_result = self.predict_state(img)
+            
+        #     counter+=1
+       
+        # if prediction_result:
+        #     current_state_ = state_tracker.get_current_state()
+        #     # print(current_state_)
+        #     # print("---------------------------")
+        
+        
+        # boardDetection = True    
+
+        # return prediction_result
 
 def display_frames():
     global boardDetection
