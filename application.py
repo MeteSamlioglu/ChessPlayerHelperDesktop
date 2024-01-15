@@ -146,9 +146,7 @@ class BoardAnalyzer:
         column = chess.square_file(square)
         
         row = chess.square_rank(square)
-        
-        print(f'row {row} column {column}')
-        
+                
         return square_coordinates[row][column]
         
     def show_move_on_board(self,frame, from_square, to_square, square_coordinates):
@@ -161,8 +159,8 @@ class BoardAnalyzer:
         
         to_square = tuple(map(int, to_square))
         
-        cv2.arrowedLine(frame, from_square, to_square, (0, 128, 0), 10, cv2.LINE_AA, tipLength=0.2)
-        
+        cv2.arrowedLine(frame, from_square, to_square, (0, 128, 0), 5, cv2.LINE_AA, tipLength=0.1)
+
     def analyze_board(self, path):
         
         global boardDetection
@@ -173,36 +171,36 @@ class BoardAnalyzer:
         
         square_coordinates = self.find_square_coordinates(self.corners) 
         
-        self.show_move_on_board(img, "d7", "d5", square_coordinates)
+        # self.show_move_on_board(img, "d3", "b2", square_coordinates)
         
-        cv2.imshow("Frame", img)
+        # cv2.imshow("Frame", img)
 
-        cv2.waitKey(0)
+        # cv2.waitKey(0)
         
-        # counter = 0
+        counter = 0
         
-        # prediction_result = self.predict_state(img)
+        prediction_result = self.predict_state(img)
         
-        # while prediction_result is not True:
+        while prediction_result is not True:
             
-        #     if counter == PREDICTION_THRESHOLD:
-        #         print("========= State is not recognized ===============")
-        #         prediction_result = False
-        #         break
+            if counter == PREDICTION_THRESHOLD:
+                print("========= State is not recognized ===============")
+                prediction_result = False
+                break
                 
-        #     prediction_result = self.predict_state(img)
+            prediction_result = self.predict_state(img)
             
-        #     counter+=1
+            counter+=1
        
-        # if prediction_result:
-        #     current_state_ = state_tracker.get_current_state()
-        #     # print(current_state_)
-        #     # print("---------------------------")
+        if prediction_result:
+            current_state_ = state_tracker.get_current_state()
+            # print(current_state_)
+            # print("---------------------------")
         
         
-        # boardDetection = True    
+        boardDetection = True    
 
-        # return prediction_result
+        return prediction_result
 
 def display_frames():
     global boardDetection
@@ -264,12 +262,7 @@ def display_frames():
             cv2.line(frame, corner2, corner3, (0, 255, 0), 10)
             cv2.line(frame, corner3, corner4, (0, 255, 0), 10)
             cv2.line(frame, corner4, corner1, (0, 255, 0), 10)
-            start_point = corner2
-            end_point = corner4
-            color = (255, 0, 0)  # Green color
-            thickness = 10
-            arrow_tip_length = 0.1
-
+ 
             # Draw the arrowed line
             #cv2.arrowedLine(frame, start_point, end_point, color, thickness, tipLength=arrow_tip_length)
 
@@ -291,7 +284,9 @@ if __name__ == "__main__":
     boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\05.jpg")
     boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\06.jpg")
     boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\07.jpg")
-
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\08.jpg")
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\09.jpg")
+    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\10.jpg")
 
 
 

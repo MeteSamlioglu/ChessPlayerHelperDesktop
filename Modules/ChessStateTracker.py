@@ -1,6 +1,6 @@
 import chess
 from chess import Status
-
+import copy
 
 class StateTracker:
     
@@ -56,7 +56,8 @@ class StateTracker:
             possible_white_moves_count = len(white_possible_moves)
             
             print("White possible moves")
-            print(white_possible_moves)
+            
+            
             
             if(possible_white_moves_count == 0):
                 return False
@@ -66,8 +67,23 @@ class StateTracker:
             # current_state_.turn = chess.WHITE
 
             # current_state_.push(white_possible_moves[0])
+            print(white_possible_moves)
             
+            
+            current_state =  chess.Board()
+            current_state.clear()
+            
+            for square in chess.SQUARES:
+                piece = previous_state.piece_at(square)
+                if piece is not None:
+                    current_state.set_piece_at(square, piece)
+            
+            moves = white_possible_moves[0] 
+            current_state.push(moves)
+            print("Previous State White")
             print(CurrentState)
+            print("Current State White")
+            print(current_state)
             print("---------------------------")  
             
             self.state_counter+=1
@@ -77,7 +93,7 @@ class StateTracker:
             self.BLACK_TURN = True       
             
             
-            self.States.append(CurrentState)
+            self.States.append(current_state)
             
             return True
         
@@ -98,18 +114,32 @@ class StateTracker:
             possible_black_moves_count = len(black_possible_moves)
 
             print("Black possible moves")
-            print(black_possible_moves)
             
             if possible_black_moves_count == 0:
                 return False
             
-            # current_state_ = previous_state.copy()
+            print(black_possible_moves)
+            current_state =  chess.Board()
+            current_state.clear()
             
-            # current_state_.turn = chess.BLACK
-            # current_state_.push(black_possible_moves[0])
+            for square in chess.SQUARES:
+                piece = previous_state.piece_at(square)
+                if piece is not None:
+                    current_state.set_piece_at(square, piece)
             
+            if(len(black_possible_moves) == 1):
+                moves = black_possible_moves[0] 
+            else: 
+                index = 1
+                moves = black_possible_moves[1] 
+
+            current_state.turn = chess.BLACK
+            current_state.push(moves)
+            
+            print("Previous State Black")
             print(CurrentState)
-            
+            print("Current State Black")
+            print(current_state)
             print("---------------------------")   
             
             self.WHITE_TURN = True
@@ -118,7 +148,7 @@ class StateTracker:
             
             self.state_counter+=1
             
-            self.States.append(CurrentState)
+            self.States.append(current_state)
             
             return True
 
@@ -136,7 +166,6 @@ class StateTracker:
             diff_squares.append(chess.square_name(square))
         
         if turn == chess.BLACK:
-                    
 
             for i in range(len(diff_squares)):
                 

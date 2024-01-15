@@ -139,7 +139,7 @@ def find_corners(cfg: CN, img: np.ndarray) -> np.ndarray:
 
         if iterations > 10000:
             print("RANSAC produced no viable results")
-    
+            print("Board is not recognizd 2")
 
     # Retrieve best configuration
     (xmin, xmax, ymin, ymax), scale, quantized_points, intersection_points, warped_img_size = best_configuration
@@ -248,8 +248,9 @@ def _detect_lines(cfg: CN, edges: np.ndarray) -> np.ndarray:
    
      
     if lines is None or len(lines) == 0:
+        print("Board is not recognized")
         raise ChessboardNotLocatedException("No lines detected in the image")
-    
+        
     lines = lines.squeeze(axis=-2)
    
     lines = _fix_negative_rho_in_hesse_normal_form(lines)
