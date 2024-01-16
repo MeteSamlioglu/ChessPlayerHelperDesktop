@@ -18,3 +18,9 @@ print(board)
 print("----------------------")
 
 print(copied_board)
+
+square_index = 63
+
+# Convert numerical index to algebraic notation
+square_algebraic = chess.square_name(square_index)
+print(square_algebraic)

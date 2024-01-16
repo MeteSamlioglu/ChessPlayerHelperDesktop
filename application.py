@@ -24,6 +24,8 @@ from pathlib import Path
 import threading
 import asyncio
 import concurrent.futures
+import time
+import chess.engine
 
 _squares = list(chess.SQUARES)
 
@@ -69,23 +71,13 @@ class BoardAnalyzer:
         with torch.no_grad():
                         
             occupancy_classification = ClassifyOccupancy.occupancy_classifier(self.occupancy_model, self.occupancy_transforms_,self.occupancy_cfg,
-                                                                              frame, chess.WHITE, self.corners)
-            #print(occupancy_classification)
-            
-            pieces =  ClassifyPieces._classify_pieces(self.pieces_model,self.pieces_transforms_, self.piece_classes, frame, chess.WHITE, self.corners, occupancy_classification)
+                                                                              frame, chess.WHITE, self.corners)            
+            piece_predictions, pieces =  ClassifyPieces._classify_pieces(self.pieces_model,self.pieces_transforms_, self.piece_classes, frame, chess.WHITE, self.corners, occupancy_classification)
 
-            
-            board = chess.Board()
-            
-            board.clear_board()
-        
-            for square, piece in zip(_squares, pieces):
-                if piece:
-                    #print(f'Square  {square} , Piece {piece} Type {type(piece)}')
-                    board.set_piece_at(square, piece)
-            
-            
-            state_tracker_result = state_tracker.add_state(board)
+            # for piece_info in low_confidence_pieces:
+            #     print(f"Square {piece_info['square']}: Predicted piece {piece_info['predicted_label']} with confidence {piece_info['confidence']}")
+
+            state_tracker_result = state_tracker.add_state(piece_predictions, pieces)
                     
             return state_tracker_result
     
@@ -169,14 +161,7 @@ class BoardAnalyzer:
         
         img, self.corners = self.detect_chessboard(frame)
         
-        square_coordinates = self.find_square_coordinates(self.corners) 
-        
-        # self.show_move_on_board(img, "d3", "b2", square_coordinates)
-        
-        # cv2.imshow("Frame", img)
-
-        # cv2.waitKey(0)
-        
+    
         counter = 0
         
         prediction_result = self.predict_state(img)
@@ -187,21 +172,32 @@ class BoardAnalyzer:
                 print("========= State is not recognized ===============")
                 prediction_result = False
                 break
-                
-            prediction_result = self.predict_state(img)
             
+            time.sleep(0.5)    
+            prediction_result = self.predict_state(img)
             counter+=1
        
-        if prediction_result:
-            current_state_ = state_tracker.get_current_state()
-            # print(current_state_)
-            # print("---------------------------")
+        # if prediction_result:
+        #     if  state_tracker.isBlackTurn():
+        #         current_state_ = state_tracker.get_current_state()
+        #         engine_move = get_engine_move(current_state_, turn="white", engine_path="D:\\chesscog\\stockfish")
+        #         print(f"Engine suggests move: {engine_move}")
+        
+        square_coordinates = self.find_square_coordinates(self.corners) 
+        
+        self.show_move_on_board(img, "d3", "b2", square_coordinates)
+        
+        cv2.imshow("frame", img)
+
+        cv2.waitKey(0)
         
         
         boardDetection = True    
 
         return prediction_result
 
+
+    
 def display_frames():
     global boardDetection
     ip_camera_address = '192.168.1.85'
@@ -280,13 +276,13 @@ if __name__ == "__main__":
     boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\01.jpg")
     boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\02.jpg")
     boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\03.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\04.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\05.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\06.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\07.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\08.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\09.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\10.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\04.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\05.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\06.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\07.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\08.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\09.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\10.jpg")
 
 
 

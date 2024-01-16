@@ -95,7 +95,30 @@ def _classify_pieces(_pieces_model, _pieces_transforms, _piece_classes, img: np.
     all_pieces = np.full(len(_squares), None, dtype=object)
     all_pieces[occupancy] = pieces
     
-    return all_pieces
+    logits = _pieces_model(piece_imgs)
+
+    probabilities = F.softmax(logits, dim=-1)
+
+    # Get the predicted classes
+    predicted_classes = probabilities.argmax(axis=-1).cpu().numpy()
+
+    # Get the class labels
+    predicted_labels = _piece_classes[predicted_classes]
+
+    # Get the confidence scores for each prediction
+    confidence_scores = probabilities.max(axis=-1).values.cpu().numpy()
+    
+    pieces_info = []
+    
+    for square, label, confidence in zip(occupied_squares, predicted_labels, confidence_scores):
+        piece_info = {
+            'square': square,
+            'predicted_label': label,
+            'confidence': confidence
+        }
+        pieces_info.append(piece_info)
+        
+    return pieces_info, all_pieces
     
     
 def crop_square(img: np.ndarray, square: chess.Square, turn: chess.Color) -> np.ndarray:
