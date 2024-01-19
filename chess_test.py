@@ -1,45 +1,44 @@
 import chess
-import copy
+from stockfish import Stockfish
 
-def get_total_piece_count(chess_board):
-    piece_count = 0
+stockfish = Stockfish(r'D:\\chesscog\\stockfish\\stockfish-windows-x86-64-avx2')
 
-    # Iterate over the piece_map to count pieces
-    for square, piece in chess_board.piece_map().items():
-        if piece is not None:
-            piece_count += 1
+starting_fen_position = "rn1qkb1r/pp1b1ppp/4p3/1BP5/8/2P1BN2/P1P2PPP/R2QK2R w KQkq - 2 10"
 
-    return piece_count
-    
+# Set the FEN position to Stockfish
+stockfish.set_fen_position(starting_fen_position)
 
-board = chess.Board()
 
-uci_move = "b8c6"
 
-copied_board = copy.deepcopy(board)
+# Make your own move
 
-move = chess.Move.from_uci(uci_move)
-
-board.push(move)
-
+# Apply the move to the board
+board = chess.Board(starting_fen_position)
+print("Starting Fen Position")
 print(board)
 
-print("----------------------")
+best_move = stockfish.get_best_move()
+print("Best move")
+print(best_move)
 
-print(copied_board)
+my_move = chess.Move.from_uci("f3e5")
 
-square_index = 63
-
-# Convert numerical index to algebraic notation
-square_algebraic = chess.square_name(square_index)
-print(square_algebraic)
-
-
-count = get_total_piece_count(board)
-print(count)
+board.push(my_move)
+print("After f3e5 ")
+print(board)
 
 
+# Set the updated position to Stockfish
+stockfish.set_fen_position(board.fen())
 
-integer_square = 63
-algebraic_square = chess.square_name(integer_square)
-print(algebraic_square)  # Output: h1
+# Get the evaluation after your move
+evaluation = stockfish.get_evaluation()
+print(f"Evaluation after your move: {evaluation}")
+
+# Interpret the evaluation
+if evaluation["value"] > 0:
+    print("Brilliant Move!")
+elif -1 <= evaluation["value"] <= 1:
+    print("Correct Move")
+elif evaluation["value"] < -1:
+    print("Blunder")

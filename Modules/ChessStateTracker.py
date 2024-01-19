@@ -57,31 +57,31 @@ class StateTracker:
                     counter+=1
             
             print(CurrentState)
-            previous_board_piece_count = self.States_piece_count[self.state_counter - 1]
+            #previous_board_piece_count = self.States_piece_count[self.state_counter - 1]
             
-            if piece_counter > previous_board_piece_count:
+            # if piece_counter > previous_board_piece_count:
                 
-                print(f'Current piece count {previous_board_piece_count} Found piece counter {piece_counter}')  
+            #     print(f'Current piece count {previous_board_piece_count} Found piece counter {piece_counter}')  
                 
-                n = piece_counter - previous_board_piece_count
+            #     n = piece_counter - previous_board_piece_count
                 
-                max_heap = []
+            #     max_heap = []
 
-                for piece_info in piece_predictions:
-                    confidence = piece_info['confidence']
-                    heapq.heappush(max_heap, (-confidence, piece_info))
+            #     for piece_info in piece_predictions:
+            #         confidence = piece_info['confidence']
+            #         heapq.headppush(max_heap, (-confidence, piece_info))
 
-                    if len(max_heap) > n:
-                        heapq.heappop(max_heap)
+            #         if len(max_heap) > n:
+            #             heapq.heappop(max_heap)
 
-                # Retrieve and print the lowest N elements
-                for neg_confidence, piece_info in max_heap:
+            #     # Retrieve and print the lowest N elements
+            #     for neg_confidence, piece_info in max_heap:
                     
-                    square = piece_info['square']
-                    confidence = -neg_confidence
+            #         square = piece_info['square']
+            #         confidence = -neg_confidence
 
-                    print(f"Square: {piece_info['square']}, Label: {piece_info['predicted_label']}, Confidence: {confidence}")
-                    CurrentState.set_piece_at(square, None)
+            #         print(f"Square: {piece_info['square']}, Label: {piece_info['predicted_label']}, Confidence: {confidence}")
+            #         CurrentState.set_piece_at(square, None)
                     
             return CurrentState
         
