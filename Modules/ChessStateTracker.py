@@ -2,6 +2,7 @@ import chess
 from chess import Status
 import copy
 _squares = list(chess.SQUARES)
+import heapq
 
 class StateTracker:
     
@@ -10,6 +11,7 @@ class StateTracker:
     def __init__(self):
         
         self.States = []
+        self.States_piece_count = []
         self.state_counter = 0
         
         self.WHITE_TURN = True
@@ -21,14 +23,18 @@ class StateTracker:
     def load_the_board(self, piece_predictions, pieces):
         CurrentState = chess.Board()
         CurrentState.clear_board()
-        counter = 0        
+        
         if self.state_counter == 0:
             for square, piece in zip(_squares, pieces):
                 if piece:
                     CurrentState.set_piece_at(square, piece)
+            
+            piece_counter = 32 #Initial board has 32 piece 
             return CurrentState
         else: 
             previous_state = self.States[self.state_counter - 1]
+            counter = 0
+            piece_counter = 0    
 
             for square, piece in zip(_squares, pieces):
                 if piece:
@@ -36,39 +42,80 @@ class StateTracker:
                     
                     confidence = piece_info['confidence']            
                     
-                    if confidence < 0.48:
+                    integer_square = square
+                    algebraic_square = chess.square_name(integer_square)
+                    
+                    print(f'square {algebraic_square} piece {piece} confidence {confidence}')
+                    
+                    if confidence < 0.48: #0.48
                         CurrentState.set_piece_at(square, previous_state.piece_at(square)) 
+                        piece_counter+=1
                     else:
                         CurrentState.set_piece_at(square, piece)
+                        piece_counter+=1
                     
                     counter+=1
-        
+            
+            print(CurrentState)
+            previous_board_piece_count = self.States_piece_count[self.state_counter - 1]
+            
+            if piece_counter > previous_board_piece_count:
+                
+                print(f'Current piece count {previous_board_piece_count} Found piece counter {piece_counter}')  
+                
+                n = piece_counter - previous_board_piece_count
+                
+                max_heap = []
+
+                for piece_info in piece_predictions:
+                    confidence = piece_info['confidence']
+                    heapq.heappush(max_heap, (-confidence, piece_info))
+
+                    if len(max_heap) > n:
+                        heapq.heappop(max_heap)
+
+                # Retrieve and print the lowest N elements
+                for neg_confidence, piece_info in max_heap:
+                    
+                    square = piece_info['square']
+                    confidence = -neg_confidence
+
+                    print(f"Square: {piece_info['square']}, Label: {piece_info['predicted_label']}, Confidence: {confidence}")
+                    CurrentState.set_piece_at(square, None)
+                    
             return CurrentState
         
     def add_state(self, piece_predictions, pieces):
         
-        CurrentState= self.load_the_board(piece_predictions, pieces)
+        CurrentState = self.load_the_board(piece_predictions, pieces)
         
         if self.state_counter == 0:
             if CurrentState !=  self.white_initialized_board:
                 print("======== Initial board is not recognized properly ========")
-                return False
+                return False, CurrentState
             else:
                print("======== Initial board is recognized  ========")
                self.States.append(self.white_initialized_board)
+               initial_piece_count = 32
+               self.States_piece_count.append(initial_piece_count)
+               
                self.state_counter+=1
-               return True
+               
+               print(f'State Number {self.state_counter}')
+               print("CurrentState")
+               print(CurrentState)
+               
+               return True, self.white_initialized_board
         
         previous_state = self.States[self.state_counter - 1]
 
         
-        print(f'State Number {self.state_counter}')
         if self.WHITE_TURN == True:
                     
             white_differences_set = self.find_difference(previous_state, CurrentState, chess.BLACK)
             
             white_diff_count = len(white_differences_set)
-            print(white_differences_set)
+            # print(white_differences_set)
             print(white_diff_count)
             
             white_possible_moves = self.find_possible_moves(white_differences_set, chess.WHITE)
@@ -83,7 +130,7 @@ class StateTracker:
             
             
             if(possible_white_moves_count == 0):
-                return False
+                return False, CurrentState
             
             print(white_possible_moves)
             
@@ -95,30 +142,36 @@ class StateTracker:
                 if piece is not None:
                     current_state.set_piece_at(square, piece)
             
-            index = 0
-            if(len(white_possible_moves) > 1):
-                self.compare_detected_pieces(white_possible_moves, CurrentState, previous_state)
+            # index = 0
+            # if(len(white_possible_moves) > 1):
+            #     index = self.compare_detected_pieces(white_possible_moves, CurrentState, previous_state)
           
             
-            move = white_possible_moves[index]
+            move = white_possible_moves[0]
             
             current_state.push(move)
-            print("Previous State White")
-            print(CurrentState)
+            # print("Previous State White")
+            # print(CurrentState)
+            self.state_counter+=1
+            
+            print(f'State Number {self.state_counter}')
+            print(f'Turn White = {self.WHITE_TURN}  {chess.WHITE}')
             print("Current State White")
             print(current_state)
-            
             print("---------------------------")  
-            
-            self.state_counter+=1
             
             self.WHITE_TURN = False
             
             self.BLACK_TURN = True       
+
+            current_piece_count = self.get_piece_count(current_state)
+            
+            self.States_piece_count.append(current_piece_count)
+            print(f'Current piece count on the board {current_piece_count}')
             
             self.States.append(current_state)
             
-            return True
+            return True, current_state
         
         if self.BLACK_TURN == True:
         
@@ -128,7 +181,7 @@ class StateTracker:
             black_diff_count = len(black_difference_set)
             
             print(black_diff_count)
-            print(black_difference_set)
+            # print(black_difference_set)
 
             black_possible_moves = self.find_possible_moves(black_difference_set, chess.BLACK)
             
@@ -140,7 +193,7 @@ class StateTracker:
             print("Black possible moves")
             
             if possible_black_moves_count == 0:
-                return False
+                return False, CurrentState
             
             print(black_possible_moves)
             current_state =  chess.Board()
@@ -152,16 +205,18 @@ class StateTracker:
                     current_state.set_piece_at(square, piece)
             
             index = 0
-            if(len(black_possible_moves) > 1):
-                self.compare_detected_pieces(black_possible_moves, CurrentState, previous_state)
+            # if(len(black_possible_moves) > 1):
+            #     index = self.compare_detected_pieces(black_possible_moves, CurrentState, previous_state)
             
             move = black_possible_moves[index]
 
             current_state.turn = chess.BLACK
             current_state.push(move)
-            
-            print("Previous State Black")
-            print(CurrentState)
+      
+            self.state_counter+=1
+
+            print(f'State Number {self.state_counter}')
+            print(f'Turn White = {self.BLACK_TURN}  {chess.BLACK}')
             print("Current State Black")
             print(current_state)
             print("---------------------------")   
@@ -170,11 +225,26 @@ class StateTracker:
             
             self.BLACK_TURN = False   
             
-            self.state_counter+=1
+            current_piece_count = self.get_piece_count(current_state)
             
+            self.States_piece_count.append(current_piece_count)
+            
+            print(f'Current piece count on the board {current_piece_count}')
+
             self.States.append(current_state)
             
-            return True
+            return True, current_state
+    
+    def get_piece_count(self, chess_board):
+        piece_count = 0
+        
+        # Iterate over the piece_map to count pieces
+        for square, piece in chess_board.piece_map().items():
+            if piece is not None:
+                piece_count += 1
+
+        return piece_count
+    
     def isBlackTurn(self):
         if(self.BLACK_TURN == True):
             return True
@@ -225,7 +295,8 @@ class StateTracker:
                 square= chess.parse_square(diff_squares[i])
                 
                 piece = previous_board.piece_at(square)
-                
+                print("Difference black")
+                print(f'Piece {piece} , Square ({square})')
                 if piece is not None and piece.color == chess.BLACK:
          
                     for j in range(len(diff_squares)):
@@ -256,9 +327,12 @@ class StateTracker:
                 square= chess.parse_square(diff_squares[i])
                 
                 piece = previous_board.piece_at(square)
-                
+               
+                print("Difference white")
+                print(f'Piece {piece} , Square ({square})')
+                     
                 if piece is not None and piece.color == chess.WHITE:
-                    
+               
                     for j in range(len(diff_squares)):
                         
                         if(j != i):    

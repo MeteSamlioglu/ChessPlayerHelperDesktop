@@ -153,48 +153,41 @@ class BoardAnalyzer:
         
         cv2.arrowedLine(frame, from_square, to_square, (0, 128, 0), 5, cv2.LINE_AA, tipLength=0.1)
 
-    def analyze_board(self, path):
+    def analyze_board(self, frame):
         
         global boardDetection
 
-        frame = cv2.imread(path)
+        #frame = cv2.imread(path)
         
         img, self.corners = self.detect_chessboard(frame)
         
     
         counter = 0
         
-        prediction_result = self.predict_state(img)
+        prediction_result, board = self.predict_state(img)
         
-        while prediction_result is not True:
+        # while prediction_result is not True:
             
-            if counter == PREDICTION_THRESHOLD:
-                print("========= State is not recognized ===============")
-                prediction_result = False
-                break
+        #     if counter == PREDICTION_THRESHOLD:
+        #         print("========= State is not recognized ===============")
+        #         prediction_result = False
+        #         break
             
-            time.sleep(0.5)    
-            prediction_result = self.predict_state(img)
-            counter+=1
+        #     time.sleep(0.5)    
+        #     prediction_result = self.predict_state(img)
+        #     counter+=1
        
-        # if prediction_result:
-        #     if  state_tracker.isBlackTurn():
-        #         current_state_ = state_tracker.get_current_state()
-        #         engine_move = get_engine_move(current_state_, turn="white", engine_path="D:\\chesscog\\stockfish")
-        #         print(f"Engine suggests move: {engine_move}")
+        # square_coordinates = self.find_square_coordinates(self.corners) 
         
-        square_coordinates = self.find_square_coordinates(self.corners) 
+        # self.show_move_on_board(img, "d3", "b2", square_coordinates)
         
-        self.show_move_on_board(img, "d3", "b2", square_coordinates)
-        
-        cv2.imshow("frame", img)
+        # cv2.imshow("frame", img)
 
-        cv2.waitKey(0)
-        
+        # cv2.waitKey(0) 
         
         boardDetection = True    
 
-        return prediction_result
+        return board, self.corners, prediction_result
 
 
     
@@ -202,7 +195,7 @@ def display_frames():
     global boardDetection
     ip_camera_address = '192.168.1.85'
     ip_camera_port = '8080'
-    ip_camera_url = f"http://192.168.1.85:8080/video"
+    ip_camera_url = f"http://192.168.1.86:8080/video"
     frame_counter = 0
     cap = cv2.VideoCapture(ip_camera_url)
     #cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
@@ -235,16 +228,23 @@ def display_frames():
             break
         
         if cv2.waitKey(25) & 0xFF == ord('a') and future is None:
+            print("pressed")
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(boardAnalyzer.analyzeBoard, frame)        
+                future = executor.submit(boardAnalyzer.analyze_board, frame)        
+        
         if cv2.waitKey(25) & 0xFF == ord('s'):
             if showBorders:
                 showBorders = False
             else:
                 showBorders = True 
-                
+        
+        if cv2.waitKey(25) & 0xFF == ord('d'):
+            print(f' Prediction Result: {prediction_result}')
+            print("Board")
+            print(board)    
+            
         if boardDetection and future is not None:
-            corners = future.result()
+            board, corners, prediction_result = future.result()
             corner1 = tuple(map(int, corners[0]))
             corner2 = tuple(map(int, corners[1]))
             corner3 = tuple(map(int, corners[2]))
@@ -270,12 +270,12 @@ def display_frames():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    boardAnalyzer = BoardAnalyzer() 
-    #boardAnalyzer.analyzeBoard()
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\00.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\01.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\02.jpg")
-    boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\03.jpg")
+    # boardAnalyzer = BoardAnalyzer() 
+    # boardAnalyzer.analyze_board()
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\00.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\01.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\02.jpg")
+    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\03.jpg")
     # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\04.jpg")
     # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\05.jpg")
     # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\06.jpg")
@@ -284,10 +284,6 @@ if __name__ == "__main__":
     # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\09.jpg")
     # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\10.jpg")
 
-
-
-
     #state_tracker.display_states()
-
    
-    #display_frames()
+    display_frames()
