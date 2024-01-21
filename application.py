@@ -26,6 +26,7 @@ import asyncio
 import concurrent.futures
 import time
 import chess.engine
+from stockfish import Stockfish
 
 _squares = list(chess.SQUARES)
 
@@ -51,10 +52,15 @@ class BoardAnalyzer:
         
         self.piece_classes = np.array(list(map(ClassifyPieces.name_to_piece, self.pieces_cfg.DATASET.CLASSES)))
         
+        self.stockfish = Stockfish(r'D:\\chesscog\\stockfish\\stockfish-windows-x86-64-avx2')
+
+        self.moves = []
+        
+        self.square_coordinates = None
     
-    
+        self.CurrentFenDescription = None
+        
     def detect_chessboard(self, frame) -> typing.Tuple[chess.Board, np.ndarray, dict]:
-      
             
             #img = cv2.imread(path)
             
@@ -63,6 +69,8 @@ class BoardAnalyzer:
             img, img_scale = DetectBoard.resize_image(self.cfg, img)
             
             self.corners = DetectBoard.find_corners(self.cfg, img)
+            
+            self.square_coordinates = self.find_square_coordinates(self.corners)
             
             return img, self.corners
     
@@ -141,7 +149,7 @@ class BoardAnalyzer:
                 
         return square_coordinates[row][column]
         
-    def show_move_on_board(self,frame, from_square, to_square, square_coordinates):
+    def show_move_on_board(self,frame, from_square, to_square, square_coordinates, offeredMove = True):
         
         from_square  = self.get_square_coordinate(from_square, square_coordinates)
         
@@ -151,7 +159,11 @@ class BoardAnalyzer:
         
         to_square = tuple(map(int, to_square))
         
-        cv2.arrowedLine(frame, from_square, to_square, (0, 128, 0), 5, cv2.LINE_AA, tipLength=0.1)
+        if offeredMove:
+            cv2.arrowedLine(frame, from_square, to_square, (0, 128, 0), 5, cv2.LINE_AA, tipLength=0.1)
+        
+        else:
+            cv2.arrowedLine(frame, from_square, to_square, (0, 255, 255), 5, cv2.LINE_AA, tipLength=0.1)
 
     def analyze_board(self, frame):
         
@@ -161,11 +173,17 @@ class BoardAnalyzer:
         
         img, self.corners = self.detect_chessboard(frame)
         
-    
         counter = 0
         
-        prediction_result, board = self.predict_state(img)
+        prediction_result, board, move = self.predict_state(img)
         
+        
+        if prediction_result == True and move is not None:
+    
+            self.moves.append(move)
+            
+            self.CurrentFenDescription = board.fen()
+
         # while prediction_result is not True:
             
         #     if counter == PREDICTION_THRESHOLD:
@@ -188,12 +206,33 @@ class BoardAnalyzer:
         boardDetection = True    
 
         return board, self.corners, prediction_result
-
-
     
+    def show_previous_move(self,frame):
+        if len(self.moves) > 1:
+            prev_move_index = len(self.moves) - 1 
+            previous_move = self.moves[prev_move_index]
+            
+            from_square_name = chess.square_name(previous_move.from_square)
+            
+            to_square_name = chess.square_name(previous_move.to_square)
+            
+            self.show_move_on_board(frame, from_square_name, to_square_name, self.square_coordinates, False)
+            
+    def show_analyzed_move(self, frame):
+
+        self.stockfish.set_fen_position(self.CurrentFenDescription)
+        
+        best_move = self.stockfish.get_best_move()
+        
+        from_square_name = best_move[:2]
+        
+        to_square_name = best_move[2:]
+
+        self.show_move_on_board(frame, from_square_name, to_square_name, self.square_coordinates)
+
 def display_frames():
     global boardDetection
-    ip_camera_address = '192.168.1.85'
+    ip_camera_address = '192.168.1.91'
     ip_camera_port = '8080'
     ip_camera_url = f"http://192.168.1.91:8080/video"
     frame_counter = 0
@@ -218,6 +257,9 @@ def display_frames():
     future = None  
     corners = np.zeros((10,10))
     showBorders = False
+    showPreviousMove = False
+    showAnalyzedMove = False
+    showMenuBar = False
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -228,20 +270,33 @@ def display_frames():
             break
         
         if cv2.waitKey(25) & 0xFF == ord('a') and future is None:
-            print("pressed")
+            print("Game State is Changed")
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(boardAnalyzer.analyze_board, frame)        
         
-        if cv2.waitKey(25) & 0xFF == ord('s'):
+        if cv2.waitKey(25) & 0xFF == ord('1'):
             if showBorders:
                 showBorders = False
             else:
                 showBorders = True 
         
-        if cv2.waitKey(25) & 0xFF == ord('d'):
-            print(f' Prediction Result: {prediction_result}')
-            print("Board")
-            print(board)    
+        if cv2.waitKey(25) & 0xFF == ord('2'):
+            if showPreviousMove:
+                showPreviousMove = False
+            else:
+                showPreviousMove = True 
+        
+        if cv2.waitKey(25) & 0xFF == ord('3'):
+            if showAnalyzedMove:
+                showAnalyzedMove = False
+            else:
+                showAnalyzedMove = True 
+        
+        if cv2.waitKey(25) & 0xFF == ord('s'):
+            if showMenuBar:
+                showMenuBar = False
+            else:
+                showMenuBar = True 
             
         if boardDetection and future is not None:
             board, corners, prediction_result = future.result()
@@ -259,13 +314,32 @@ def display_frames():
             cv2.line(frame, corner3, corner4, (0, 255, 0), 10)
             cv2.line(frame, corner4, corner1, (0, 255, 0), 10)
  
-            # Draw the arrowed line
-            #cv2.arrowedLine(frame, start_point, end_point, color, thickness, tipLength=arrow_tip_length)
+        if showPreviousMove == True:
+            boardAnalyzer.show_previous_move(frame)
+        
+        if showAnalyzedMove == True:
+            boardAnalyzer.show_analyzed_move(frame)
+        
+        if showMenuBar == True:
+            text = "1-)Show detected board"
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.7
+            font_color = (255, 255, 255)  
+            font_thickness = 2
+
+            text_position = (10, 30)
+            text2_position = (10, text_position[1] + 30)  
+            text2 = "2-)Show previous move"
+            text3_position = (10, text2_position[1] + 30) 
+            text3 = "3-)Show analyzed move"
+
+            cv2.putText(frame, text, text_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text2, text2_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text3, text3_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
+
 
         cv2.imshow("Frames", frame)
 
-    
-    
     cap.release()
     cv2.destroyAllWindows()
 

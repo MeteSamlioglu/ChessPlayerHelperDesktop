@@ -64,7 +64,6 @@ def find_corners(cfg: CN, img: np.ndarray) -> np.ndarray:
     t2 = timer()
     
     time = t2 - t1 
-    print("Time spent for resizing : %f ",time)
       
     
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

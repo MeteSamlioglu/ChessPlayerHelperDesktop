@@ -32,19 +32,19 @@ from stockfish import Stockfish
 #     print("\nThe move is not legal.")
 
 
-queenside_castling = "r1bqk2r/1ppp1ppp/p1n1pn2/8/1bB1P3/5N2/PPPP1PPP/RNBQK2R w - - 0 2"
+# queenside_castling = "r1bqk2r/1ppp1ppp/p1n1pn2/8/1bB1P3/5N2/PPPP1PPP/RNBQK2R w - - 0 2"
 
-queenside_castling_board = chess.Board(queenside_castling)
+# queenside_castling_board = chess.Board(queenside_castling)
 
-print("Board")
-print(queenside_castling_board)
+# print("Board")
+# print(queenside_castling_board)
 
-move1 = chess.Move.from_uci("e1a1")
+# move1 = chess.Move.from_uci("e1a1")
 
-if queenside_castling_board.has_castling_rights(chess.WHITE):
-    print("White has castling rights")
-else:
-    print("White does not have a castling rights")
+# if queenside_castling_board.has_castling_rights(chess.WHITE):
+#     print("White has castling rights")
+# else:
+#     print("White does not have a castling rights")
 
 # if queenside_castling_board.is_castling(move1):
 #     print("Castling")
@@ -61,37 +61,37 @@ else:
 #     print("It is not a castling")
     
 
-# stockfish = Stockfish(r'D:\\chesscog\\stockfish\\stockfish-windows-x86-64-avx2')
+stockfish = Stockfish(r'D:\\chesscog\\stockfish\\stockfish-windows-x86-64-avx2')
 
-# starting_fen_position = "rn1qkb1r/pp1b1ppp/4p3/1BP5/8/2P1BN2/P1P2PPP/R2QK2R w KQkq - 2 10"
+starting_fen_position = "rnbqkbnr/1p2pppp/p7/2pp4/3P1BQ1/4P3/PPP2PPP/RN2KBNR b KQkq - 1 4"
 
-# # Set the FEN position to Stockfish
-# stockfish.set_fen_position(starting_fen_position)
+# Set the FEN position to Stockfish
+stockfish.set_fen_position(starting_fen_position)
 
+# Apply the move to the board
+board = chess.Board(starting_fen_position)
+print("Starting Fen Position")
+print(board)
 
+best_move = stockfish.get_best_move()
+print("Best move")
+print(best_move)
+print(type(best_move))
+evaluation = stockfish.get_evaluation()
+print(f"Evaluation after your move: {evaluation}")
 
-# Make your own move
-
-# # Apply the move to the board
-# board = chess.Board(starting_fen_position)
-# print("Starting Fen Position")
-# print(board)
-
-# best_move = stockfish.get_best_move()
-# print("Best move")
-# print(best_move)
-
-# my_move = chess.Move.from_uci("f3e5")
+# my_move = chess.Move.from_uci("e2e4")
 
 # board.push(my_move)
-# print("After f3e5 ")
-# print(board)
+
+#print("After f3e5 ")
+#print(board)
 
 
-# # Set the updated position to Stockfish
-# stockfish.set_fen_position(board.fen())
+# Set the updated position to Stockfish
+#stockfish.set_fen_position(board.fen())
 
-# # Get the evaluation after your move
+# Get the evaluation after your move
 # evaluation = stockfish.get_evaluation()
 # print(f"Evaluation after your move: {evaluation}")
 

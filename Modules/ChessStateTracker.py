@@ -49,7 +49,7 @@ class StateTracker:
             previous_predictions_dict = {d['square']: d for d in previous_predictions}
             piece_predictions_dict = {d['square']: d for d in piece_predictions}
                        
-            print("Difference")
+            # print("Difference")
             for square, current_piece_info in piece_predictions_dict.items():
 
                 current_piece_confidence = current_piece_info['confidence']
@@ -58,7 +58,7 @@ class StateTracker:
                 
                 square_name = chess.square_name(square)
                 
-                print(f'current piece square {square_name} current piece label = {current_piece_label} current piece confidence = {current_piece_confidence}')
+                # print(f'current piece square {square_name} current piece label = {current_piece_label} current piece confidence = {current_piece_confidence}')
                 
                 if square in previous_predictions_dict:
                     
@@ -72,15 +72,15 @@ class StateTracker:
                     self.to_square.append(current_piece_info)
                 
             if len(self.from_square) > 0:
-                print("From square")
-                print(self.from_square)
+                # print("From square")
+                # print(self.from_square)
                 for i in range(len(self.from_square)):
                     from_square_name = chess.square_name(self.from_square[i]['square'])
-                    print(from_square_name)
+                    #print(from_square_name)
             
             if len(self.to_square) > 0:
-                print("To Square")
-                print(self.to_square)    
+                # print("To Square")
+                # print(self.to_square)    
                 
                 for i in range(len(self.to_square)):
                     to_square_name = chess.square_name(self.to_square[i]['square'])
@@ -98,10 +98,10 @@ class StateTracker:
                     counter+=1
 
             
-            print("CurrentState")
-            print(CurrentState)
-            print("PreviousState")
-            print(previous_state)
+            # print("CurrentState")
+            # print(CurrentState)
+            # print("PreviousState")
+            # print(previous_state)
                                 
             return CurrentState
         
@@ -112,7 +112,7 @@ class StateTracker:
         if self.state_counter == 0:
             if CurrentState !=  self.white_initialized_board:
                 print("======== Initial board is not recognized properly ========")
-                return False, CurrentState
+                return False, CurrentState, None
             else:
                print("======== Initial board is recognized  ========")
                self.States.append(self.white_initialized_board)
@@ -122,11 +122,11 @@ class StateTracker:
                
                self.state_counter+=1
                
-               print(f'State Number {self.state_counter}')
-               print("CurrentState")
+               print(f'State {self.state_counter}')
+               print("Initial State for White")
                print(CurrentState)
                
-               return True, self.white_initialized_board
+               return True, self.white_initialized_board, None
         
         previous_state = self.States[self.state_counter - 1]
 
@@ -139,9 +139,6 @@ class StateTracker:
             
             white_possible_moves, detected_squares = self.find_possible_moves(white_differences_set, chess.WHITE)
             
-            
-            print("detected_squares")
-            print(detected_squares)
                     
             #Check Castling
 
@@ -150,21 +147,16 @@ class StateTracker:
                             
             valid_kingside_squares = {'e1', 'f1', 'g1', 'h1'}
             valid_queenside_squares = {'a1', 'c1', 'd1' , 'b1'}
-            print(type(detected_squares[0]))
-            print("Statement0")
+            
             for i in range(len(detected_squares)):
-                print(f'detected_squares[i] {detected_squares[i]}')
                 if detected_squares[i] in valid_kingside_squares:
                     castling_kingside_counter += 1
                 elif detected_squares[i] in valid_queenside_squares:
                     castling_queenside_counter += 1
-            print("Statement1")
-            if self.GameBoard.has_castling_rights(chess.WHITE):
-                print("it has the rights")
+     
             # #--------------------------------------------------------------------------
             if self.GameBoard.has_castling_rights(chess.WHITE) and (castling_kingside_counter >= 3 or castling_queenside_counter >= 3):
                 
-                print("Statement2")
                 previous_state.turn = chess.WHITE
                   
                 state =  chess.Board()
@@ -185,11 +177,8 @@ class StateTracker:
                     state.push(move)
                     self.GameBoard.push(move)
                 
-            
-                print("Statement3")
-
                 print("Current State White - White Castled")
-                print(state)
+                print(self.GameBoard)
                 print("---------------------------") 
                 
                 self.States.append(state)
@@ -206,15 +195,15 @@ class StateTracker:
                 
                 self.BLACK_TURN = True
                 
-                return True, state 
+                return True, self.GameBoard, move
         
             #---------------------------------------------------------------------          
             
             if white_diff_count >= StateTracker.THRESHOLD_VALUE: 
-                return False, CurrentState
+                return False, CurrentState,None
             
             
-            print("White possible moves")
+            #print("White possible moves")
             
             if len(white_possible_moves) == 0:
                 possible_moves_from_prediction_threshold = []
@@ -241,9 +230,10 @@ class StateTracker:
                 
             
             if len(white_possible_moves) == 0:
-                return False, CurrentState
+                print("The move made in state is not recognized")
+                return False, CurrentState, None
             
-            print(white_possible_moves)
+            #print(white_possible_moves)
             
             current_state =  chess.Board()
             current_state.clear()
@@ -266,7 +256,7 @@ class StateTracker:
             self.state_counter+=1
             
             print(f'State Number {self.state_counter}')
-            print(f'Turn White = {self.WHITE_TURN}  {chess.WHITE}')
+            #print(f'Turn White = {self.WHITE_TURN}  {chess.WHITE}')
             print("Current State White")
             print(current_state)
             print("---------------------------")  
@@ -278,17 +268,16 @@ class StateTracker:
             current_piece_count = self.get_piece_count(current_state)
             
             self.States_piece_count.append(current_piece_count)
-            print(f'Current piece count on the board {current_piece_count}')
-            
+                        
             self.States.append(current_state)
             
             self.StatePredictions.append(piece_predictions)
             
-            print("Fen Description For White")
-            fen_description =  self.GameBoard.fen()
-            print(fen_description)
+            # print("Fen Description For White")
+            # fen_description =  self.GameBoard.fen()
+            # print(fen_description)
             
-            return True, current_state
+            return True, self.GameBoard, move
         
         if self.BLACK_TURN == True:
         
@@ -299,11 +288,74 @@ class StateTracker:
             
             black_possible_moves, detected_squares = self.find_possible_moves(black_difference_set, chess.BLACK)
             
-            if black_diff_count >= StateTracker.THRESHOLD_VALUE: 
-                return False, CurrentState
-            
+            #Check Castling Black
+            # #--------------------------------------------------------------------------
 
-            print("Black possible moves")
+            castling_queenside_counter = 0
+            castling_kingside_counter = 0
+                            
+            valid_kingside_squares = {'e8', 'f8', 'h8', 'g8'}
+            valid_queenside_squares = {'a8', 'c8', 'e8' , 'd8'}
+            
+            for i in range(len(detected_squares)):
+                if detected_squares[i] in valid_kingside_squares:
+                    castling_kingside_counter += 1
+                elif detected_squares[i] in valid_queenside_squares:
+                    castling_queenside_counter += 1
+            print(f'castling_kingside_counter {castling_kingside_counter} castling_queenside_counter {castling_queenside_counter}')
+            if self.GameBoard.has_castling_rights(chess.BLACK) and (castling_kingside_counter >= 3 or castling_queenside_counter >= 3):
+                
+                previous_state.turn = chess.BLACK
+                  
+                state =  chess.Board()
+                state.clear()
+                
+                for square in chess.SQUARES:
+                    piece = previous_state.piece_at(square)
+                    if piece is not None:
+                        state.set_piece_at(square, piece)
+                
+                if castling_kingside_counter >= 3:
+                    state.turn = chess.BLACK
+                    move = chess.Move.from_uci("e8h8")
+                    state.push(move)   
+                    self.GameBoard.push(move)
+             
+                elif castling_queenside_counter >=3:
+                    state.turn = chess.BLACK
+                    move = chess.Move.from_uci("e8a8")
+                    state.push(move)
+                    self.GameBoard.push(move)
+                
+                print("Current State Black - Black Castled")
+                # print(state)
+                # print("---------------------------") 
+
+                print(self.GameBoard)
+                print("---------------------------") 
+                
+                self.States.append(state)
+                    
+                current_piece_count = self.get_piece_count(state)
+                
+                self.States_piece_count.append(current_piece_count)
+                
+                self.state_counter += 1
+                
+                self.StatePredictions.append(piece_predictions)
+                
+                self.WHITE_TURN = True
+                
+                self.BLACK_TURN = False
+                
+                return True, self.GameBoard, move
+            # #--------------------------------------------------------------------------
+
+            if black_diff_count >= StateTracker.THRESHOLD_VALUE: 
+                print("State is not recognized")
+                return False, CurrentState, None
+            
+            #print("Black possible moves")
             
             if len(black_possible_moves) == 0:
                 
@@ -331,9 +383,11 @@ class StateTracker:
             
             
             if len(black_possible_moves) == 0:
-                return False, CurrentState    
+                print("The move made in state is not recognized")
+                return False, CurrentState, None  
                
-            print(black_possible_moves)
+            #print(black_possible_moves)
+            
             current_state =  chess.Board()
             current_state.clear()
             
@@ -356,7 +410,7 @@ class StateTracker:
             self.state_counter+=1
 
             print(f'State Number {self.state_counter}')
-            print(f'Turn White = {self.BLACK_TURN}')
+            # print(f'Turn White = {self.BLACK_TURN}')
             print("Current State Black")
             print(current_state)
             print("---------------------------")   
@@ -371,15 +425,17 @@ class StateTracker:
             
             self.StatePredictions.append(piece_predictions)
             
-            print(f'Current piece count on the board {current_piece_count}')
+            #print(f'Current piece count on the board {current_piece_count}')
 
             self.States.append(current_state)
-            print("Fen Description For Black")
-            fen_description =  self.GameBoard.fen()
-            print(fen_description)
+            # print("Fen Description For Black")
+            # fen_description =  self.GameBoard.fen()
+            # print(fen_description)
             
-            return True, current_state
+            return True, current_state, move
     
+    def get_current_state(self):
+        return self.state_counter
     
     
     def get_piece_count(self, chess_board):
@@ -437,10 +493,10 @@ class StateTracker:
             square= chess.parse_square(diff_squares[i])
             
             piece = previous_board.piece_at(square)
-            print("Difference")
+            #print("Difference")
             square_name = chess.square_name(square)
 
-            print(f'Piece {piece} , Square ({square_name})')
+            #print(f'Piece {piece} , Square ({square_name})')
             
             if piece is not None:
         
