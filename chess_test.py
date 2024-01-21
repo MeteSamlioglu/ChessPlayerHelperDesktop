@@ -1,11 +1,66 @@
 import chess
 from stockfish import Stockfish
 
-board = chess.Board()
-print(board)
+# board = chess.Board()
+# print(board)
 
-piece_at = board.piece_at(30)
-print(piece_at)
+# piece_at = board.piece_at(30)
+# print(piece_at)
+
+# fen_position = "rn1qk2r/pppb1ppp/4pn2/1B1p4/1b1P4/2N1PN2/PPP2PPP/R1BQK2R w KQkq - 5 6"
+# board = chess.Board(fen_position)
+
+# print(board)
+
+# move = chess.Move.from_uci("e1h1")  # Example move: Nf3
+
+# if board.is_legal(move):
+#     if board.is_castling(move):
+#         print("Castling")
+#         if board.is_kingside_castling(move):
+#             print("Kingside castling")
+#         if board.is_queenside_castling(move):
+#             print("Queenside castling")
+#     else:
+#         print("It is not a castling")
+    
+#     board.push(move)
+#     print("\nPosition after making the legal move:")
+#     print(board)
+
+# else:
+#     print("\nThe move is not legal.")
+
+
+queenside_castling = "r1bqk2r/1ppp1ppp/p1n1pn2/8/1bB1P3/5N2/PPPP1PPP/RNBQK2R w - - 0 2"
+
+queenside_castling_board = chess.Board(queenside_castling)
+
+print("Board")
+print(queenside_castling_board)
+
+move1 = chess.Move.from_uci("e1a1")
+
+if queenside_castling_board.has_castling_rights(chess.WHITE):
+    print("White has castling rights")
+else:
+    print("White does not have a castling rights")
+
+# if queenside_castling_board.is_castling(move1):
+#     print("Castling")
+#     if queenside_castling_board.is_kingside_castling(move1):
+#         print("Kingside castling")
+#     if queenside_castling_board.is_queenside_castling(move1):
+#         print("Queenside castling")
+    
+#     queenside_castling_board.push(move1)
+#     print("\nPosition after making the legal move:")
+#     print(queenside_castling_board)
+
+# else:
+#     print("It is not a castling")
+    
+
 # stockfish = Stockfish(r'D:\\chesscog\\stockfish\\stockfish-windows-x86-64-avx2')
 
 # starting_fen_position = "rn1qkb1r/pp1b1ppp/4p3/1BP5/8/2P1BN2/P1P2PPP/R2QK2R w KQkq - 2 10"
