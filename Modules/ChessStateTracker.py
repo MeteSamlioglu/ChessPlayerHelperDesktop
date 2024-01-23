@@ -58,7 +58,7 @@ class StateTracker:
                 
                 square_name = chess.square_name(square)
                 
-                # print(f'current piece square {square_name} current piece label = {current_piece_label} current piece confidence = {current_piece_confidence}')
+                #print(f'current piece square {square_name} current piece label = {current_piece_label} current piece confidence = {current_piece_confidence}')
                 
                 if square in previous_predictions_dict:
                     
@@ -84,7 +84,7 @@ class StateTracker:
                 
                 for i in range(len(self.to_square)):
                     to_square_name = chess.square_name(self.to_square[i]['square'])
-                    print(to_square_name)
+                    #print(to_square_name)
 
             counter = 0
             for square, piece in zip(_squares, pieces):
@@ -176,8 +176,8 @@ class StateTracker:
                     move = chess.Move.from_uci("e1a1")
                     state.push(move)
                     self.GameBoard.push(move)
-                
-                print("Current State White - White Castled")
+                print("Move : White Castling")
+                print("Current State - Black's Turn ")
                 print(self.GameBoard)
                 print("---------------------------") 
                 
@@ -257,7 +257,7 @@ class StateTracker:
             
             print(f'State Number {self.state_counter}')
             #print(f'Turn White = {self.WHITE_TURN}  {chess.WHITE}')
-            print("Current State White")
+            print("Current State - Black's Turn")
             print(current_state)
             print("---------------------------")  
             
@@ -327,7 +327,8 @@ class StateTracker:
                     state.push(move)
                     self.GameBoard.push(move)
                 
-                print("Current State Black - Black Castled")
+                print("Move : Black Castling")
+                print("Current State - White's Turn")
                 # print(state)
                 # print("---------------------------") 
 
@@ -408,10 +409,9 @@ class StateTracker:
             self.GameBoard.push(move)
             
             self.state_counter+=1
-
             print(f'State Number {self.state_counter}')
             # print(f'Turn White = {self.BLACK_TURN}')
-            print("Current State Black")
+            print("Current State - White's Turn")
             print(current_state)
             print("---------------------------")   
             

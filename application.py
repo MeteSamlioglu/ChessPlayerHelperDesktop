@@ -31,7 +31,7 @@ from stockfish import Stockfish
 _squares = list(chess.SQUARES)
 
 boardDetection = False
-
+isGameOver = False
 state_tracker = ChessStateTracker.StateTracker()
 
 PREDICTION_THRESHOLD = 4
@@ -164,11 +164,28 @@ class BoardAnalyzer:
         
         else:
             cv2.arrowedLine(frame, from_square, to_square, (0, 255, 255), 5, cv2.LINE_AA, tipLength=0.1)
+    
+    def is_game_over(self,fen):
+        board = chess.Board(fen)
+        return board.is_game_over()
+    
+    def get_winner(self, fen):
+        
+        board = chess.Board(fen)
+        result = board.result()
 
+        if result.result() == "1-0":
+            return "White wins"
+        elif result.result() == "0-1":
+            return "Black wins"
+        elif result.result() == "1/2-1/2":
+            return "It's a draw"
+    
+        
     def analyze_board(self, frame):
         
         global boardDetection
-
+        global isGameOver
         #frame = cv2.imread(path)
         
         img, self.corners = self.detect_chessboard(frame)
@@ -181,9 +198,14 @@ class BoardAnalyzer:
         if prediction_result == True and move is not None:
     
             self.moves.append(move)
+            print(f'Move {move}')
             
             self.CurrentFenDescription = board.fen()
-
+            
+            if self.is_game_over(self.CurrentFenDescription):
+                print("Checkmate!")
+                print(self.get_winner(self.CurrentFenDescription))
+                isGameOver = True
         # while prediction_result is not True:
             
         #     if counter == PREDICTION_THRESHOLD:
@@ -219,25 +241,27 @@ class BoardAnalyzer:
             self.show_move_on_board(frame, from_square_name, to_square_name, self.square_coordinates, False)
             
     def show_analyzed_move(self, frame):
+        check_game_over = self.is_game_over(self.CurrentFenDescription)
+        if check_game_over == False:
+            self.stockfish.set_fen_position(self.CurrentFenDescription)
+            
+            best_move = self.stockfish.get_best_move()
+            
+            from_square_name = best_move[:2]
+            
+            to_square_name = best_move[2:]
 
-        self.stockfish.set_fen_position(self.CurrentFenDescription)
-        
-        best_move = self.stockfish.get_best_move()
-        
-        from_square_name = best_move[:2]
-        
-        to_square_name = best_move[2:]
-
-        self.show_move_on_board(frame, from_square_name, to_square_name, self.square_coordinates)
+            self.show_move_on_board(frame, from_square_name, to_square_name, self.square_coordinates)
 
 def display_frames():
     global boardDetection
+    global isGameOver
     ip_camera_address = '192.168.1.91'
     ip_camera_port = '8080'
     ip_camera_url = f"http://192.168.1.91:8080/video"
     frame_counter = 0
     cap = cv2.VideoCapture(ip_camera_url)
-    #cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+    #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     if not cap.isOpened():
         print(f"Error: Could not open IP camera stream at {ip_camera_url}")
         return
@@ -273,6 +297,8 @@ def display_frames():
             print("Game State is Changed")
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(boardAnalyzer.analyze_board, frame)        
+        if isGameOver == True:
+            break
         
         if cv2.waitKey(25) & 0xFF == ord('1'):
             if showBorders:
@@ -291,6 +317,9 @@ def display_frames():
                 showAnalyzedMove = False
             else:
                 showAnalyzedMove = True 
+        if cv2.waitKey(25) & 0xFF == ord('4'):
+            print("ChessPlayerHelper is terminated, See you next time !")
+            break
         
         if cv2.waitKey(25) & 0xFF == ord('s'):
             if showMenuBar:
@@ -332,10 +361,12 @@ def display_frames():
             text2 = "2-)Show previous move"
             text3_position = (10, text2_position[1] + 30) 
             text3 = "3-)Show analyzed move"
-
+            text4 = "4-)Quit"
+            text4_position = (10, text3_position[1] + 30)
             cv2.putText(frame, text, text_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text2, text2_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text3, text3_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text4, text4_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
 
 
         cv2.imshow("Frames", frame)
