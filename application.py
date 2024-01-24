@@ -31,7 +31,6 @@ from stockfish import Stockfish
 _squares = list(chess.SQUARES)
 
 boardDetection = False
-isGameOver = False
 state_tracker = ChessStateTracker.StateTracker()
 
 PREDICTION_THRESHOLD = 4
@@ -181,11 +180,14 @@ class BoardAnalyzer:
         elif result.result() == "1/2-1/2":
             return "It's a draw"
     
-        
+    def rewind_to_previous_state(self):
+        rewind_result = state_tracker.remove_last_state()
+        if rewind_result == False:
+            print("The rewind operation is not succeded")
+    
     def analyze_board(self, frame):
         
         global boardDetection
-        global isGameOver
         #frame = cv2.imread(path)
         
         img, self.corners = self.detect_chessboard(frame)
@@ -205,25 +207,7 @@ class BoardAnalyzer:
             if self.is_game_over(self.CurrentFenDescription):
                 print("Checkmate!")
                 print(self.get_winner(self.CurrentFenDescription))
-                isGameOver = True
-        # while prediction_result is not True:
-            
-        #     if counter == PREDICTION_THRESHOLD:
-        #         print("========= State is not recognized ===============")
-        #         prediction_result = False
-        #         break
-            
-        #     time.sleep(0.5)    
-        #     prediction_result = self.predict_state(img)
-        #     counter+=1
-       
-        # square_coordinates = self.find_square_coordinates(self.corners) 
-        
-        # self.show_move_on_board(img, "d3", "b2", square_coordinates)
-        
-        # cv2.imshow("frame", img)
 
-        # cv2.waitKey(0) 
         
         boardDetection = True    
 
@@ -255,10 +239,9 @@ class BoardAnalyzer:
 
 def display_frames():
     global boardDetection
-    global isGameOver
-    ip_camera_address = '192.168.1.91'
+    ip_camera_address = '10.1.225.170'
     ip_camera_port = '8080'
-    ip_camera_url = f"http://192.168.1.91:8080/video"
+    ip_camera_url = f"http://192.168.1.64:8080/video"
     frame_counter = 0
     cap = cv2.VideoCapture(ip_camera_url)
     #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -288,40 +271,43 @@ def display_frames():
         ret, frame = cap.read()
         if not ret:
             break
+        
         frame = cv2.resize(frame, (1200, 675))
         
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            break
-        
-        if cv2.waitKey(25) & 0xFF == ord('a') and future is None:
-            print("Game State is Changed")
+        key = cv2.waitKey(1) & 0xFF
+
+        if key== ord('a') and future is None:
+            print("State is changed")
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(boardAnalyzer.analyze_board, frame)        
-        if isGameOver == True:
-            break
-        
-        if cv2.waitKey(25) & 0xFF == ord('1'):
+                
+        elif key == ord('1'):
             if showBorders:
                 showBorders = False
             else:
                 showBorders = True 
         
-        if cv2.waitKey(25) & 0xFF == ord('2'):
+        elif key == ord('2'):
+            
             if showPreviousMove:
                 showPreviousMove = False
             else:
                 showPreviousMove = True 
         
-        if cv2.waitKey(25) & 0xFF == ord('3'):
+        elif key == ord('3'):
             if showAnalyzedMove:
                 showAnalyzedMove = False
             else:
                 showAnalyzedMove = True 
-        if cv2.waitKey(25) & 0xFF == ord('4'):
-            print("ChessPlayerHelper is terminated, See you next time !")
-            break
+
+        elif key == ord('4'):
+            boardAnalyzer.rewind_to_previous_state()
         
-        if cv2.waitKey(25) & 0xFF == ord('s'):
+        elif key == ord('5'):
+            print("ChessPlayerHelper is terminated")
+            break            
+        
+        elif key == ord('s'):
             if showMenuBar:
                 showMenuBar = False
             else:
@@ -355,18 +341,21 @@ def display_frames():
             font_scale = 0.7
             font_color = (255, 255, 255)  
             font_thickness = 2
-
             text_position = (10, 30)
             text2_position = (10, text_position[1] + 30)  
             text2 = "2-)Show previous move"
             text3_position = (10, text2_position[1] + 30) 
             text3 = "3-)Show analyzed move"
-            text4 = "4-)Quit"
+            text4 = "4-)Rewind"
             text4_position = (10, text3_position[1] + 30)
+            text5 = "5-) Quit"
+            text5_position = (10, text4_position[1] + 30)
+            
             cv2.putText(frame, text, text_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text2, text2_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text3, text3_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text4, text4_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text5, text5_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
 
 
         cv2.imshow("Frames", frame)

@@ -19,7 +19,7 @@ def processing_thread_worker(cfg, frame, result_queue):
 
 def video_capture():
     
-    ip_camera_url = f"http://192.168.1.49:8080/video"
+    ip_camera_url = f"http://192.168.1.64/video"
 
     cap = cv2.VideoCapture(ip_camera_url)  # Replace 'your_video.mp4' with your video file
     width = 1200
