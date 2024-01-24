@@ -59,6 +59,7 @@ def find_corners(cfg: CN, img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: the pixel coordinates of the four corners
     """
+    print("Hadi basladi")
     t1 = timer()
     img, img_scale = resize_image(cfg, img)
     t2 = timer()
@@ -202,6 +203,8 @@ def find_corners(cfg: CN, img: np.ndarray) -> np.ndarray:
     img_corners = _warp_points(inverse_transformation_matrix, corners)
     img_corners = img_corners / img_scale
     # print(img_corners)
+    print("Finished")
+    print(img_corners)
     return sort_corner_points(img_corners)
 
 

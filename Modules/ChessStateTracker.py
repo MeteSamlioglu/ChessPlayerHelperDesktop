@@ -108,7 +108,8 @@ class StateTracker:
     def add_state(self, piece_predictions, pieces):
         
         CurrentState = self.load_the_board(piece_predictions, pieces)
-        
+        print("CurrState")
+        print(CurrentState)
         if self.state_counter == 0:
             if CurrentState !=  self.white_initialized_board:
                 print("======== Initial board is not recognized properly ========")
@@ -133,6 +134,7 @@ class StateTracker:
         
         if self.WHITE_TURN == True:
                     
+            print("WHITE")
             white_differences_set = self.find_difference(previous_state, CurrentState, chess.BLACK)
             
             white_diff_count = len(white_differences_set)
@@ -180,7 +182,7 @@ class StateTracker:
                 print("Current State - Black's Turn ")
                 print(self.GameBoard)
                 print("---------------------------") 
-                
+
                 self.States.append(state)
                     
                 current_piece_count = self.get_piece_count(state)
@@ -282,6 +284,8 @@ class StateTracker:
         if self.BLACK_TURN == True:
         
             
+            print("BLACK")
+
             black_difference_set = self.find_difference(previous_state, CurrentState, chess.WHITE)
             
             black_diff_count = len(black_difference_set)
@@ -302,7 +306,7 @@ class StateTracker:
                     castling_kingside_counter += 1
                 elif detected_squares[i] in valid_queenside_squares:
                     castling_queenside_counter += 1
-            print(f'castling_kingside_counter {castling_kingside_counter} castling_queenside_counter {castling_queenside_counter}')
+
             if self.GameBoard.has_castling_rights(chess.BLACK) and (castling_kingside_counter >= 3 or castling_queenside_counter >= 3):
                 
                 previous_state.turn = chess.BLACK
@@ -448,7 +452,38 @@ class StateTracker:
 
         return piece_count
     
-    
+    def remove_last_state(self):
+        
+        if len(self.States) > 1:
+            self.States.pop() #remove the last element from states
+            self.States_piece_count.pop()
+            self.StatePredictions.pop()
+            
+            if self.WHITE_TURN == False:
+            
+                self.BLACK_TURN = False 
+                self.WHITE_TURN = True
+                print("The rewind of the move was successful.Please make another move for white.")
+                self.state_counter -=1
+                prev_state = self.States[self.state_counter - 1]
+                print(f'State Number{self.state_counter}')
+                print("Current State - White's Turn")
+                print(prev_state)
+                print("---------------------------")  
+                return True
+            else:
+                self.BLACK_TURN = True 
+                self.WHITE_TURN = False    
+                print("The rewind of the move was successful.Please make another move for black.")
+                self.state_counter -=1
+                prev_state = self.States[self.state_counter - 1]
+                print(f'State Number {self.state_counter}')
+                print("Current State - Black's Turn")
+                print(prev_state)
+                return True
+        else:
+            print("You can not rewind. The current state is initial state")
+            return False
     def compare_detected_pieces(self, possible_moves, CurrentState, previous_state):
         
         index = 0      
