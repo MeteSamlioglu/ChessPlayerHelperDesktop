@@ -436,7 +436,7 @@ class StateTracker:
             # fen_description =  self.GameBoard.fen()
             # print(fen_description)
             
-            return True, current_state, move
+            return True, self.GameBoard, move
     
     def get_current_state(self):
         return self.state_counter

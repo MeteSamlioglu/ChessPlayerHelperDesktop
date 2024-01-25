@@ -27,6 +27,8 @@ import concurrent.futures
 import time
 import chess.engine
 from stockfish import Stockfish
+import threading
+from queue import Queue
 
 _squares = list(chess.SQUARES)
 
@@ -58,6 +60,8 @@ class BoardAnalyzer:
         self.square_coordinates = None
     
         self.CurrentFenDescription = None
+        
+        self.bestMove = None
         
     def detect_chessboard(self, frame) -> typing.Tuple[chess.Board, np.ndarray, dict]:
             
@@ -172,12 +176,12 @@ class BoardAnalyzer:
         
         board = chess.Board(fen)
         result = board.result()
-
-        if result.result() == "1-0":
+        print(result)
+        if result == "1-0":
             return "White wins"
-        elif result.result() == "0-1":
+        elif result == "0-1":
             return "Black wins"
-        elif result.result() == "1/2-1/2":
+        elif result == "1/2-1/2":
             return "It's a draw"
     
     def rewind_to_previous_state(self):
@@ -200,18 +204,38 @@ class BoardAnalyzer:
         if prediction_result == True and move is not None:
     
             self.moves.append(move)
-            print(f'Move {move}')
+            print(f'Move: {move}')
             
             self.CurrentFenDescription = board.fen()
             
-            if self.is_game_over(self.CurrentFenDescription):
+            print("FEN Description")
+            print(self.CurrentFenDescription)
+            
+            #Check if the game is over or not
+            if self.is_game_over(self.CurrentFenDescription): 
                 print("Checkmate!")
                 print(self.get_winner(self.CurrentFenDescription))
-
+            
+            else:  #If the game is not over, analyze the board
+                self.stockfish.set_fen_position(self.CurrentFenDescription)
+            
+                best_move = self.stockfish.get_best_move()
+                
+                if best_move:
+                    self.BestMove = best_move
+                else:
+                    print("An issue occurred while calculating the suggested move.")
+                
         
         boardDetection = True    
 
-        return board, self.corners, prediction_result
+        return  self.corners
+    """
+     Returns the corners points
+    
+    """
+    def get_corner_points(self):
+        return self.corners
     
     def show_previous_move(self,frame):
         if len(self.moves) > 1:
@@ -225,11 +249,8 @@ class BoardAnalyzer:
             self.show_move_on_board(frame, from_square_name, to_square_name, self.square_coordinates, False)
             
     def show_analyzed_move(self, frame):
-        check_game_over = self.is_game_over(self.CurrentFenDescription)
-        if check_game_over == False:
-            self.stockfish.set_fen_position(self.CurrentFenDescription)
-            
-            best_move = self.stockfish.get_best_move()
+
+            best_move =  self.BestMove
             
             from_square_name = best_move[:2]
             
@@ -239,9 +260,7 @@ class BoardAnalyzer:
 
 def display_frames():
     global boardDetection
-    ip_camera_address = '10.1.225.170'
-    ip_camera_port = '8080'
-    ip_camera_url = f"http://192.168.1.64:8080/video"
+    ip_camera_url = f"http://192.168.1.65:8080/video"
     frame_counter = 0
     cap = cv2.VideoCapture(ip_camera_url)
     #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -276,31 +295,36 @@ def display_frames():
         
         key = cv2.waitKey(1) & 0xFF
 
-        if key== ord('a') and future is None:
-            print("State is changed")
+        if key== ord('b') and future is None:
+            print("State is changed...")
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(boardAnalyzer.analyze_board, frame)        
-                
-        elif key == ord('1'):
+        
+        elif key == ord('a'):
+            print("State is changed...")
+            processing_thread = threading.Thread(target=boardAnalyzer.analyze_board, args=(frame,))
+            processing_thread.start()
+                       
+        elif key == ord('4'):
             if showBorders:
                 showBorders = False
             else:
                 showBorders = True 
         
-        elif key == ord('2'):
+        elif key == ord('1'):
             
             if showPreviousMove:
                 showPreviousMove = False
             else:
                 showPreviousMove = True 
         
-        elif key == ord('3'):
+        elif key == ord('2'):
             if showAnalyzedMove:
                 showAnalyzedMove = False
             else:
                 showAnalyzedMove = True 
 
-        elif key == ord('4'):
+        elif key == ord('3'):
             boardAnalyzer.rewind_to_previous_state()
         
         elif key == ord('5'):
@@ -312,15 +336,29 @@ def display_frames():
                 showMenuBar = False
             else:
                 showMenuBar = True 
-            
-        if boardDetection and future is not None:
-            board, corners, prediction_result = future.result()
+        
+        elif key == ord('6'):
+            state_tracker.display_states()
+        
+        # if boardDetection and future is not None:
+        #     corners = future.result()
+        #     corner1 = tuple(map(int, corners[0]))
+        #     corner2 = tuple(map(int, corners[1]))
+        #     corner3 = tuple(map(int, corners[2]))
+        #     corner4 = tuple(map(int, corners[3]))
+        #     boardDetection = False
+        #     future = None
+        
+        if boardDetection:
+            corners = boardAnalyzer.get_corner_points()
             corner1 = tuple(map(int, corners[0]))
             corner2 = tuple(map(int, corners[1]))
             corner3 = tuple(map(int, corners[2]))
             corner4 = tuple(map(int, corners[3]))
             boardDetection = False
-            future = None
+            
+            if future is not None:
+                future = None
  
         if showBorders == True:
             # Draw lines using the converted corners
@@ -336,26 +374,28 @@ def display_frames():
             boardAnalyzer.show_analyzed_move(frame)
         
         if showMenuBar == True:
-            text = "1-)Show detected board"
+            text = "Press 'a' to change state"
             font = cv2.FONT_HERSHEY_SIMPLEX
             font_scale = 0.7
             font_color = (255, 255, 255)  
             font_thickness = 2
             text_position = (10, 30)
             text2_position = (10, text_position[1] + 30)  
-            text2 = "2-)Show previous move"
+            text2 = "1-)Show previous move"
             text3_position = (10, text2_position[1] + 30) 
-            text3 = "3-)Show analyzed move"
-            text4 = "4-)Rewind"
+            text3 = "2-)Show analyzed move"
+            text4 = "3-)Rewind to previous move"
             text4_position = (10, text3_position[1] + 30)
-            text5 = "5-) Quit"
+            text5 = "4-)Show detected board"
             text5_position = (10, text4_position[1] + 30)
-            
+            text6_position = (10, text5_position[1] + 30)
+            text6 = "5-) Quit"
             cv2.putText(frame, text, text_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text2, text2_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text3, text3_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text4, text4_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text5, text5_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text6, text6_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
 
 
         cv2.imshow("Frames", frame)
@@ -366,17 +406,7 @@ def display_frames():
 if __name__ == "__main__":
     # boardAnalyzer = BoardAnalyzer() 
     # boardAnalyzer.analyze_board()
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\00.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\01.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\02.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\03.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\04.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\05.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\06.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\07.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\08.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\09.jpg")
-    # boardAnalyzer.analyze_board("D:\\chesscog\\data\\white_states\\10.jpg")
+
 
     #state_tracker.display_states()
    

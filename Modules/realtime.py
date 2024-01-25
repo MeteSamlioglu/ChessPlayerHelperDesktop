@@ -1,9 +1,10 @@
 import cv2
 import threading
+
 import time
 from recap import URI, CfgNode as CN
 from queue import Queue
-
+import numpy as np
 from DetectBoard import find_corners
 def process_frame(frame):
     # Your processing logic here
@@ -13,13 +14,12 @@ def process_frame(frame):
 
 def processing_thread_worker(cfg, frame, result_queue):
     corners_result = find_corners(cfg, frame)
-    print("Burasi")
     print(corners_result)
     result_queue.put(corners_result.tolist())  
 
 def video_capture():
     
-    ip_camera_url = f"http://192.168.1.64/video"
+    ip_camera_url = f"http://192.168.1.65:8080/video"
 
     cap = cv2.VideoCapture(ip_camera_url)  # Replace 'your_video.mp4' with your video file
     width = 1200
@@ -49,12 +49,15 @@ def video_capture():
             # Create a new thread for processing the frame
             processing_thread = threading.Thread(target=processing_thread_worker, args=(cfg,frame, result_queue))
             processing_thread.start()
-            # processing_thread.join()
-
+            
+            # Wait for the thread to finish and get the result
+            processing_thread.join()
+            print("Thread is finished")
             # # Retrieve the result from the queue
-            # corners_result = result_queue.get()
-            # corners_result = np.array(corners_result)  # Convert the list back to NumPy array
-            # print("Result from processing:", corners_result)
+            corners_result = result_queue.get()
+            corners_result = np.array(corners_result)  # Convert the list back to NumPy array
+
+            print(corners_result)
     
     cap.release()
     cv2.destroyAllWindows()
