@@ -459,7 +459,7 @@ class StateTracker:
             self.States.pop() #remove the last element from states
             self.States_piece_count.pop()
             self.StatePredictions.pop()
-            
+            self.GameBoard.pop()
             if self.WHITE_TURN == False:
             
                 self.BLACK_TURN = False 
