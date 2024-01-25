@@ -29,11 +29,13 @@ import chess.engine
 from stockfish import Stockfish
 import threading
 from queue import Queue
+import imutils 
 
 _squares = list(chess.SQUARES)
 
 boardDetection = False
 state_tracker = ChessStateTracker.StateTracker()
+start_frame_ = None 
 
 PREDICTION_THRESHOLD = 4
 
@@ -69,13 +71,13 @@ class BoardAnalyzer:
             
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
-            img, img_scale = DetectBoard.resize_image(self.cfg, img)
+            # img, img_scale = DetectBoard.resize_image(self.cfg, img)
             
-            self.corners = DetectBoard.find_corners(self.cfg, img)
+            detection_result, self.corners = DetectBoard.find_corners(self.cfg, img)
             
             self.square_coordinates = self.find_square_coordinates(self.corners)
             
-            return img, self.corners
+            return detection_result, img, self.corners
     
     def predict_state(self, frame):
         
@@ -192,14 +194,24 @@ class BoardAnalyzer:
     def analyze_board(self, frame):
         
         global boardDetection
+        global start_frame_
         #frame = cv2.imread(path)
         
-        img, self.corners = self.detect_chessboard(frame)
+        result, img, self.corners = self.detect_chessboard(frame)
         
-        counter = 0
-        
+        if result == False:
+            fail_corners = np.zeros((4,2))
+            print("Board is not recognized !")
+            boardDetection = False
+            return fail_corners
+
         prediction_result, board, move = self.predict_state(img)
         
+        if state_tracker.get_state_counter() == 1 and prediction_result: #Save the start_frame
+            start_frame_ = frame    
+            start_frame_ =  cv2.resize(start_frame_, (1200, 675))
+            start_frame_ = cv2.cvtColor(start_frame_, cv2.COLOR_BGR2GRAY)
+            start_frame_ = cv2.GaussianBlur(start_frame_, (21, 21), 0)
         
         if prediction_result == True and move is not None:
     
@@ -258,9 +270,15 @@ class BoardAnalyzer:
 
             self.show_move_on_board(frame, from_square_name, to_square_name, self.square_coordinates)
 
+#------------------------------------------------------------------
+
+
+
 def display_frames():
     global boardDetection
-    ip_camera_url = f"http://192.168.1.65:8080/video"
+    global start_frame_
+    
+    ip_camera_url = f"http://192.168.247.18:8080/video"
     frame_counter = 0
     cap = cv2.VideoCapture(ip_camera_url)
     #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -279,13 +297,17 @@ def display_frames():
     
     boardAnalyzer = BoardAnalyzer() 
 
-    frame_counter = 0
     future = None  
     corners = np.zeros((10,10))
     showBorders = False
     showPreviousMove = False
     showAnalyzedMove = False
-    showMenuBar = False
+    showMenuBar = False    
+    alarm_counter = 0
+    is_motion_detected = False
+    enableMotionTracking = False
+    text_motion_tracking = "5-)Enable Motion Tracking"
+    
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -304,20 +326,21 @@ def display_frames():
             print("State is changed...")
             processing_thread = threading.Thread(target=boardAnalyzer.analyze_board, args=(frame,))
             processing_thread.start()
-                       
+        elif key == ord('s'):
+            if showMenuBar:
+                showMenuBar = False
+            else:
+                showMenuBar = True            
         elif key == ord('4'):
             if showBorders:
                 showBorders = False
             else:
                 showBorders = True 
-        
         elif key == ord('1'):
-            
             if showPreviousMove:
                 showPreviousMove = False
             else:
                 showPreviousMove = True 
-        
         elif key == ord('2'):
             if showAnalyzedMove:
                 showAnalyzedMove = False
@@ -326,29 +349,45 @@ def display_frames():
 
         elif key == ord('3'):
             boardAnalyzer.rewind_to_previous_state()
+                  
         
         elif key == ord('5'):
-            print("ChessPlayerHelper is terminated")
-            break            
-        
-        elif key == ord('s'):
-            if showMenuBar:
-                showMenuBar = False
+            if enableMotionTracking:
+                enableMotionTracking = False
+                print("5Motion tracking is off")
+                text_motion_tracking = "5-)Enable Motion Tracking"
+
             else:
-                showMenuBar = True 
+                enableMotionTracking = True
+                print("Motion tracking is on")
+                text_motion_tracking = "5-)Disable Motion Tracking"
         
         elif key == ord('6'):
-            state_tracker.display_states()
-        
-        # if boardDetection and future is not None:
-        #     corners = future.result()
-        #     corner1 = tuple(map(int, corners[0]))
-        #     corner2 = tuple(map(int, corners[1]))
-        #     corner3 = tuple(map(int, corners[2]))
-        #     corner4 = tuple(map(int, corners[3]))
-        #     boardDetection = False
-        #     future = None
-        
+            print("ChessPlayerHelper is terminated")
+            break  
+
+        if enableMotionTracking:
+            frame_bw = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame_bw = cv2.GaussianBlur(frame_bw, (5,5), 0)
+            difference = cv2.absdiff(frame_bw, start_frame_)
+            threshold = cv2.threshold(difference, 25, 255, cv2.THRESH_BINARY)[1]
+            start_frame_ = frame_bw
+            
+            if threshold.sum() > 30:
+                alarm_counter +=1
+            else:
+                if alarm_counter > 0:
+                    alarm_counter -= 1
+            if alarm_counter > 20:
+                #print("Motion is detected")
+                is_motion_detected = True
+                    
+            if alarm_counter == 0 and is_motion_detected:
+                print("State is changed...")
+                processing_thread = threading.Thread(target=boardAnalyzer.analyze_board, args=(frame,))
+                processing_thread.start()
+                is_motion_detected = False
+    
         if boardDetection:
             corners = boardAnalyzer.get_corner_points()
             corner1 = tuple(map(int, corners[0]))
@@ -389,19 +428,32 @@ def display_frames():
             text5 = "4-)Show detected board"
             text5_position = (10, text4_position[1] + 30)
             text6_position = (10, text5_position[1] + 30)
-            text6 = "5-) Quit"
+            text7 = "6-) Quit"
+            text7_position = (10, text6_position[1] + 30)
+            
+            
             cv2.putText(frame, text, text_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text2, text2_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text3, text3_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text4, text4_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
             cv2.putText(frame, text5, text5_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
-            cv2.putText(frame, text6, text6_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
-
+            cv2.putText(frame, text_motion_tracking, text6_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text7, text7_position, font, font_scale, font_color, font_thickness, cv2.LINE_AA)
 
         cv2.imshow("Frames", frame)
 
     cap.release()
     cv2.destroyAllWindows()
+
+    # if boardDetection and future is not None:
+    #     corners = future.result()
+    #     corner1 = tuple(map(int, corners[0]))
+    #     corner2 = tuple(map(int, corners[1]))
+    #     corner3 = tuple(map(int, corners[2]))
+    #     corner4 = tuple(map(int, corners[3]))
+    #     boardDetection = False
+    #     future = None
+
 
 if __name__ == "__main__":
     # boardAnalyzer = BoardAnalyzer() 

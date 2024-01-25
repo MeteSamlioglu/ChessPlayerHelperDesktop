@@ -59,13 +59,11 @@ def find_corners(cfg: CN, img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: the pixel coordinates of the four corners
     """
-    # print("Hadi basladi")
-    t1 = timer()
+    fail_corners = np.zeros((4,2))
+
     img, img_scale = resize_image(cfg, img)
-    t2 = timer()
     
-    time = t2 - t1 
-      
+    detectionResult = True
     
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     edges = _detect_edges(cfg.EDGE_DETECTION, gray)    
@@ -76,7 +74,8 @@ def find_corners(cfg: CN, img: np.ndarray) -> np.ndarray:
     # cv2.waitKey(0)
     if lines.shape[0] > 400:
         print("Too many lines in the image")
-    
+        detectionResult = False
+        
     all_horizontal_lines, all_vertical_lines = _cluster_horizontal_and_vertical_lines(
         lines)
     
@@ -138,9 +137,9 @@ def find_corners(cfg: CN, img: np.ndarray) -> np.ndarray:
 
 
         if iterations > 10000:
-            print("RANSAC produced no viable results")
-            print("Board is not recognizd 2")
-
+            print("Board is not recognizd")
+            detectionResult = False
+            return detectionResult, fail_corners
     # Retrieve best configuration
     (xmin, xmax, ymin, ymax), scale, quantized_points, intersection_points, warped_img_size = best_configuration
 
@@ -205,7 +204,7 @@ def find_corners(cfg: CN, img: np.ndarray) -> np.ndarray:
     # print(img_corners)
     # print("Finished")
     # print(img_corners)
-    return sort_corner_points(img_corners)
+    return detectionResult, sort_corner_points(img_corners)
 
 
 def resize_image(cfg: CN, img: np.ndarray) -> typing.Tuple[np.ndarray, float]:

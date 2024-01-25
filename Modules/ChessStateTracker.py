@@ -108,8 +108,9 @@ class StateTracker:
     def add_state(self, piece_predictions, pieces):
         
         CurrentState = self.load_the_board(piece_predictions, pieces)
-        print("CurrState")
-        print(CurrentState)
+        # print("CurrState")
+        # print(CurrentState)
+        
         if self.state_counter == 0:
             if CurrentState !=  self.white_initialized_board:
                 print("======== Initial board is not recognized properly ========")
@@ -134,7 +135,7 @@ class StateTracker:
         
         if self.WHITE_TURN == True:
                     
-            print("WHITE")
+            # print("WHITE")
             white_differences_set = self.find_difference(previous_state, CurrentState, chess.BLACK)
             
             white_diff_count = len(white_differences_set)
@@ -284,7 +285,7 @@ class StateTracker:
         if self.BLACK_TURN == True:
         
             
-            print("BLACK")
+            # print("BLACK")
 
             black_difference_set = self.find_difference(previous_state, CurrentState, chess.WHITE)
             
@@ -590,4 +591,5 @@ class StateTracker:
             print(states)
             print("---------------------------")
             
-   
+    def get_state_counter(self):
+        return self.state_counter
