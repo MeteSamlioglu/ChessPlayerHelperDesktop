@@ -278,7 +278,7 @@ def display_frames():
     global boardDetection
     global start_frame_
     
-    ip_camera_url = f"http://192.168.247.18:8080/video"
+    ip_camera_url = f"http://10.251.108.229:8080/video"
     frame_counter = 0
     cap = cv2.VideoCapture(ip_camera_url)
     #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
